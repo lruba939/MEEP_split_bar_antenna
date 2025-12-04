@@ -56,8 +56,12 @@ def task_3(plot=False, eps_data=[], animation=False, animation_name="dupa"):
         
     if animation:
         make_animation(p, sim, animation_name)
+        
+    collected_data, time_steps, x_coords = collect_e_line(p, delta_t=0.5, width=5, plot_3d=True)
 
     return E_data
+
+# TASK 4 -------------------------------
 
 def task_4():
     size_params = [

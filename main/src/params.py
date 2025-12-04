@@ -1,7 +1,7 @@
 ## Singleton of parameters
 import numpy as np
 import meep as mp
-from meep.materials import Au, Cr, W
+from meep.materials import Au, Cr, W, SiO2
 
 class SimParams:
     _instance=None
@@ -15,6 +15,8 @@ class SimParams:
     def _init_parameters(self):
 
         # Geometry
+        self.material   =   Au
+        
         self.x_width    =   0.7
         self.y_length   =   0.19
         self.z_height   =   0.0
@@ -26,8 +28,8 @@ class SimParams:
                             0]
         self.center     =   [mp.Vector3(0, self.y_length/2.0 + self.gap_size/2.0, 0), # upper bar
                             mp.Vector3(0, (-1)*(self.y_length/2.0 + self.gap_size/2.0), 0)] # lower bar
-        
-        self.material   =   Au
+        # self.center     =   [mp.Vector3(0, 0, -10.), # upper bar
+        #                     mp.Vector3(0, 0, -10.)] # lower bar
         
         # Source
         self.lambda0    =   1.0 #um
