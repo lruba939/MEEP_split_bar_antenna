@@ -16,7 +16,7 @@ p = params.SimParams()
 def task_1():
     p.showParams()
     sim = simulation.make_sim()
-    sim.plot2D()
+    sim.plot3D()
     plt.show()
 
 # TASK 2 -------------------------------

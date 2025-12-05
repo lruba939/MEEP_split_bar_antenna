@@ -19,15 +19,15 @@ class SimParams:
         
         self.x_width    =   0.7
         self.y_length   =   0.19
-        self.z_height   =   0.0
+        self.z_height   =   0.10
         self.gap_size   =   0.05
         self.pad        =   2.0
         
-        self.xyz_cell   =   [self.x_width+2*self.pad,
-                            2*self.y_length + self.gap_size + 2*self.pad,
-                            0]
+        self.xyz_cell   =   [5.0,
+                             5.0,
+                            10.0]
         self.center     =   [mp.Vector3(0, self.y_length/2.0 + self.gap_size/2.0, 0), # upper bar
-                            mp.Vector3(0, (-1)*(self.y_length/2.0 + self.gap_size/2.0), 0)] # lower bar
+                            mp.Vector3(0, (-1)*(self.y_length/2.0 + self.gap_size/2.0), 5.0)] # lower bar
         # self.center     =   [mp.Vector3(0, 0, -10.), # upper bar
         #                     mp.Vector3(0, 0, -10.)] # lower bar
         
@@ -36,7 +36,7 @@ class SimParams:
         self.freq       =   1.0 / self.lambda0
         self.freq_width =   self.freq * 0.5
         self.component  =   mp.Ey
-        self.xyz_src    =   [0.0, 0.0, 3.0]
+        self.xyz_src    =   [0.0, 0.0, 8.0]
         self.src_size   =   [0.0, 0.0, 0.0]
         
         ## Simulation settings
