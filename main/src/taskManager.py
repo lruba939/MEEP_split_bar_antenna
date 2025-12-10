@@ -98,3 +98,68 @@ def task_4():
             name = "without_antennas" + comp_name + size_name
             eps = task_2(plot=False)
             task_3(plot=True, eps_data=eps, animation=False, animation_name=name)
+            
+# TASK 5 -------------------------------
+
+def task_5(skip_fraction=0.25, E_plot=False, threshold=None):
+    size_name = "000"
+    print("Size of source: ", size_name, "\n")        
+    p.reset_to_defaults()
+    
+    # --- Z antenami ---
+    name = "antennas" + size_name
+    eps = task_2(plot=False)
+    sim = simulation.make_sim()
+    simulation.start_calc(sim)
+    E_max_with = collect_max_field(p, sim, skip_fraction=skip_fraction)
+    show_data_img(datas_arr =   [E_max_with],
+                  norm_bool =   [False],
+                  cmap_arr  =   ["inferno"],
+                  alphas    =   [1.0])
+    
+    # --- Bez anten ---
+    # p.center = [mp.Vector3(0, 0, -10.), 
+    #             mp.Vector3(0, 0, -10.)]
+    p.material = mp.materials.SiO2
+    name = "without_antennas" + size_name
+    eps = task_2(plot=False)
+    sim = simulation.make_sim()
+    simulation.start_calc(sim)
+    E_max_without = collect_max_field(p, sim, skip_fraction=skip_fraction)
+    show_data_img(datas_arr =   [E_max_without],
+                norm_bool =   [False],
+                cmap_arr  =   ["inferno"],
+                alphas    =   [1.0])
+    
+    # # Ustal próg automatycznie jeśli nie podany
+    # if threshold is None:
+    #     threshold = np.percentile(E_max_without[E_max_without > 0], 10)  # dolny 10 percentyl
+    
+    # print(f"Próg pola: {threshold}")
+    
+    # # --- Wzmocnienie ---
+    # # Maskuj punkty gdzie OBIE wartości są poniżej progu
+    # mask_with = E_max_with < threshold
+    # mask_without = E_max_without < threshold
+    # mask = mask_with | mask_without  # LUB - zamaskuj jeśli którekolwiek poniżej progu
+    
+    # gain = np.zeros_like(E_max_with, dtype=float)
+    # gain[~mask] = E_max_with[~mask] / E_max_without[~mask]
+    # gain[mask] = np.nan
+    
+    gain = E_max_with / E_max_without
+
+    # Konwersja do dB
+    gain_db = 20.0 * np.log10(gain + 1e-12)
+    
+    # Clipowanie outlierów
+    vmin = np.nanpercentile(gain, 1)
+    vmax = np.nanpercentile(gain, 99)
+    gain_db_clipped = np.clip(gain, vmin, vmax)
+    
+    show_data_img(datas_arr =   [gain_db_clipped],
+                  norm_bool =   [False],
+                  cmap_arr  =   ["inferno"],
+                  alphas    =   [1.0])
+    
+    return gain_db_clipped

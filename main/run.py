@@ -11,15 +11,19 @@ def run():
     
     # #### Task 2
     # print_task(2, "Making medium - a split bar antenna.")
-    # eps = task_2(plot=True)
+    # eps = task_2(plot=False)
 
     # #### Task 3
     # print_task(3, "Calculations of the scalar electric field Ey as result of continuous source radiation.")
-    # task_3(plot=True, eps_data=eps, animation=True, animation_name="Au_antenna_Ey_003_000")
+    # task_3(plot=True, eps_data=eps, animation=True, animation_name="planewave_TEST")
     
-    #### Task 4
-    print_task(4, "")
-    task_4()
+    # #### Task 4
+    # print_task(4, "Test different source components and sizes.")
+    # task_4()
+    
+    #### Task 5
+    print_task(5, "Magnitude of the electric field with and without antennas.")
+    task_5(E_plot = True)
     
 if __name__ == "__main__":
     run()

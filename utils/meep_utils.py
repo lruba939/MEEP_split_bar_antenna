@@ -133,6 +133,96 @@ def plot_e_3d(collected_data, x_coords, time_steps):
     
     # Adjust viewpoint: elev controls vertical angle, azim controls horizontal angle
     ax.view_init(elev=20, azim=45)
-    
-    
     plt.show()
+    
+def collect_max_field(singleton_params, sim, skip_fraction=0.25, delta_t=0.5):
+    """
+    Collects the maximum value of the component field at each spatial point 
+    across the simulation duration, skipping the first skip_fraction of time.
+
+    Parameters:
+        singleton_params (object): Singleton with component, xyz_cell, animations_until
+        sim (object): MEEP simulation object
+        skip_fraction (float): Fraction of simulation time to skip (default 0.25 = 25%)
+        delta_t (float): Time interval between data collections
+
+    Returns:
+        E_max (np.ndarray): 2D array with maximum field magnitude at each point
+    """
+    collected_data = []
+    time_steps = []
+    skip_time = singleton_params.animations_until * skip_fraction
+
+    def collect_data(sim):
+        current_time = sim.meep_time()
+        
+        # Zbierz dane tylko po przeminięciu skip_time
+        if current_time >= skip_time:
+            E_data = sim.get_array(center=mp.Vector3(), 
+                                   size=singleton_params.xyz_cell, 
+                                   component=singleton_params.component)
+            collected_data.append(np.abs(E_data))
+            time_steps.append(current_time)
+
+    # Uruchom symulację i zbieraj dane
+    sim.run(mp.at_every(delta_t, collect_data), until=singleton_params.animations_until)
+
+    if len(collected_data) == 0:
+        print("Uwaga: brak danych zebrano!")
+        return None
+
+    # Oblicz maksimum dla każdego punktu przestrzennego
+    E_max = np.max(collected_data, axis=0)
+
+    return E_max
+
+def collect_integrated_field(singleton_params, sim, skip_fraction=0.25, delta_t=0.5):
+    """
+    Collects the time-integrated magnitude of the component field at each spatial point 
+    across the simulation duration, skipping the first skip_fraction of time.
+
+    Parameters:
+        singleton_params (object): Singleton with component, xyz_cell, animations_until
+        sim (object): MEEP simulation object
+        skip_fraction (float): Fraction of simulation time to skip (default 0.25 = 25%)
+        delta_t (float): Time interval between data collections (used as integration step)
+
+    Returns:
+        E_integrated (np.ndarray): 2D array with time-integrated field magnitude at each point
+    """
+    collected_data = []
+    time_steps = []
+    skip_time = singleton_params.animations_until * skip_fraction
+
+    def collect_data(sim):
+        current_time = sim.meep_time()
+        
+        # Zbierz dane tylko po przeminięciu skip_time
+        if current_time >= skip_time:
+            E_data = sim.get_array(center=mp.Vector3(), 
+                                   size=singleton_params.xyz_cell, 
+                                   component=singleton_params.component)
+            collected_data.append(np.abs(E_data))
+            time_steps.append(current_time)
+
+    # Uruchom symulację i zbieraj dane
+    sim.run(mp.at_every(delta_t, collect_data), until=singleton_params.animations_until)
+
+    if len(collected_data) == 0:
+        print("Uwaga: brak danych zebrano!")
+        return None
+
+    # Całkuj po czasie przy użyciu reguły trapezów
+    collected_array = np.array(collected_data)
+    time_steps_array = np.array(time_steps)
+    
+    # Oblicz różnice czasowe między krokami
+    dt_array = np.diff(time_steps_array)
+    
+    # Całkowanie: suma (|E_i| + |E_{i+1}|) / 2 * dt_i dla każdego punktu
+    E_integrated = np.zeros_like(collected_array[0], dtype=float)
+    
+    for i in range(len(dt_array)):
+        E_integrated += (np.abs(collected_array[i]) + np.abs(collected_array[i + 1])) / 2.0 * dt_array[i]
+
+    return E_integrated

@@ -14,6 +14,7 @@ def make_sim():
         geometry = geometry.make_medium(),
         sources = sources.make_source(),
         resolution = p.resolution,
+        k_point = mp.Vector3()
     )
     return sim
 

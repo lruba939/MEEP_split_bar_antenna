@@ -29,7 +29,7 @@ class SimParams:
         self.center     =   [mp.Vector3(0, self.y_length/2.0 + self.gap_size/2.0, 0), # upper bar
                             mp.Vector3(0, (-1)*(self.y_length/2.0 + self.gap_size/2.0), 0)] # lower bar
         # self.center     =   [mp.Vector3(0, 0, -10.), # upper bar
-        #                     mp.Vector3(0, 0, -10.)] # lower bar
+                            # mp.Vector3(0, 0, -10.)] # lower bar
         
         # Source
         self.lambda0    =   1.0 #um
@@ -42,11 +42,11 @@ class SimParams:
         ## Simulation settings
         self.pml                    =   1.0
         self.resolution             =   50
-        self.sim_time               =   1
+        self.sim_time               =   10.0
         self.animations_folder_path =   "animations"
         self.animations_until       =   10
         self.animations_step        =   0.1
-        self.animations_fps         =   10
+        self.animations_fps         =   40
 
     def reset_to_defaults(self):
         self._init_parameters()
