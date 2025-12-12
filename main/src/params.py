@@ -39,8 +39,8 @@ class SimParams:
         self.freq       =   1.0 / self.lambda0
         self.freq_width =   self.freq * 0.5
         self.component  =   mp.Ey
-        self.xyz_src    =   [1.5, 0.0, 0.0]
-        self.src_size   =   [0.0, 2.8, 0.0]
+        self.xyz_src    =   [-2, 0.0, 0.0]
+        self.src_size   =   [0, 4.4, 0.0]
         
         ## Simulation settings
         self.Courant_factor         =   0.5
@@ -50,7 +50,7 @@ class SimParams:
         self.sim_time               =   20
         self.animations_step        =   self.Courant_factor * (1 / self.resolution) # From dt = S * dx / c, where c=1 in MEEP units
         self.animations_until       =   10
-        self.animations_fps         =   20
+        self.animations_fps         =   10
         self.path_to_save           =   "results/"
         self.animations_folder_path =   os.path.join(self.path_to_save, "animations")
 

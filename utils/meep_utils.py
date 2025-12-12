@@ -55,7 +55,7 @@ def make_animation(singleton_params, sim, animation_name):
     animation_name = animation_name + ".mp4"
     sim.reset_meep()
     animate = mp.Animate2D(sim, fields=singleton_params.component, normalize = True)
-    sim.run(mp.at_every(singleton_params.animations_step, animate), until=singleton_params.animations_until)
+    sim.run(mp.at_every(singleton_params.animations_step*10, animate), until=singleton_params.animations_until)
     animate.to_mp4(filename = os.path.join(singleton_params.animations_folder_path, animation_name), fps = singleton_params.animations_fps)
     plt.show(block=False)
     plt.pause(2)
@@ -204,6 +204,15 @@ def collect_max_field(singleton_params, sim, delta_t, skip_fraction=0.5, optiona
         # print(f"CURRENT DATA: {current_data[100,100]}")
         # print(f"CURRENT MAXES: {E_maxes[100,100]}")
         E_maxes = np.maximum(E_maxes, current_data)
-
+    
+    # Zero the frame of width `frame_width` from each edge
+    frame_width = 20
+    if frame_width > 0:
+        # Top and bottom edges
+        E_maxes[:frame_width, :] = 0
+        E_maxes[-frame_width:, :] = 0
+        # Left and right edges
+        E_maxes[:, :frame_width] = 0
+        E_maxes[:, -frame_width:] = 0
 
     return E_maxes

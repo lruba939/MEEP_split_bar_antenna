@@ -14,7 +14,7 @@ def pw_amp(k, x0):
 def make_source():
     sources = [
         mp.Source(
-            src=mp.ContinuousSource(frequency=p.freq),
+            src=mp.ContinuousSource(frequency=p.freq, is_integrated=True),
             component=p.component,
             center=mp.Vector3(p.xyz_src[0], p.xyz_src[1], p.xyz_src[2]),
             size = mp.Vector3(p.src_size[0], p.src_size[1], p.src_size[2]),
