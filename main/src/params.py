@@ -1,4 +1,5 @@
 ## Singleton of parameters
+import os
 import numpy as np
 import meep as mp
 from meep.materials import Au, Cr, W, SiO2, Ag
@@ -17,7 +18,7 @@ class SimParams:
         self.IMG_CLOSE =  True
 
         # Geometry
-        self.material   =   Ag
+        self.material   =   Au
         
         self.x_width    =   0.7
         self.y_length   =   0.19
@@ -38,24 +39,29 @@ class SimParams:
         self.freq       =   1.0 / self.lambda0
         self.freq_width =   self.freq * 0.5
         self.component  =   mp.Ey
-        self.xyz_src    =   [2.0, 0.0, 0.0]
-        self.src_size   =   [0.0, 3.6, 0.0]
+        self.xyz_src    =   [1.5, 0.0, 0.0]
+        self.src_size   =   [0.0, 2.8, 0.0]
         
         ## Simulation settings
+        self.Courant_factor         =   0.5
         self.pml                    =   0.25
-        self.resolution             =   200
+        # self.pml                    =   (self.lambda0 + self.lambda0*0.5 ) / 2 #Should be: d_PML = lambda_max / 2
+        self.resolution             =   50
         self.sim_time               =   20
-        self.animations_folder_path =   "results"
-        self.animations_until       =   20
-        self.animations_step        =   0.1377
-        self.animations_fps         =   10
-
-        self.eps_data_container     =   []
-        self.E_comp_data_container  =   []
-        self.empty_cell_E_comp_data_container =   []
+        self.animations_step        =   self.Courant_factor * (1 / self.resolution) # From dt = S * dx / c, where c=1 in MEEP units
+        self.animations_until       =   10
+        self.animations_fps         =   20
+        self.path_to_save           =   "results/"
+        self.animations_folder_path =   os.path.join(self.path_to_save, "animations")
 
     def reset_to_defaults(self):
+        dir_nam_con = self.path_to_save
+        dir_ani_con = self.animations_folder_path
+        
         self._init_parameters()
+        
+        self.path_to_save = dir_nam_con
+        self.animations_folder_path = dir_ani_con
         
     def showParams(self):
         print("\n\n#################################\nSimulation and System Parameters:\n")
@@ -74,13 +80,9 @@ class SimParams:
         Args:
             filename (str): Nazwa pliku, do którego zostaną zapisane parametry.
         """
-        # Otwarcie pliku do zapisywania
         with open(filename, "w") as f:
-            # Nagłówek
             header = "\n\n#################################\nSimulation and System Parameters:\n"
             f.write(header)
-
-            # Iteracja po atrybutach
             for k, v in self.__dict__.items():
                 if not k.startswith('_'):
                     if not isinstance(v, (list, dict, tuple, np.ndarray)):
@@ -89,7 +91,5 @@ class SimParams:
                     else:
                         line = f"{k}={str(v[:5])}\n"
                         f.write(line)
-
-            # Stopka
             footer = "#################################\n\n"
             f.write(footer)

@@ -30,7 +30,7 @@ def show_data_img(datas_arr, abs_bool, norm_bool, cmap_arr, alphas, name_to_save
         plt.yticks([])  # Turn off y-axis numbers
         plt.colorbar(shrink=0.6)  # Show color scale
     if name_to_save is not None:
-        plt.savefig(f"results/{name_to_save}.png", dpi=300, bbox_inches="tight", format="png")
+        plt.savefig(f"{name_to_save}.png", dpi=300, bbox_inches="tight", format="png")
     if IMG_CLOSE:
         plt.show(block=False)
         plt.pause(2)
@@ -61,7 +61,7 @@ def make_animation(singleton_params, sim, animation_name):
     plt.pause(2)
     plt.close("all")
 
-def collect_e_line(singleton_params, sim, delta_t=1.0, width=1, plot_3d=False, name=None):
+def collect_e_line(singleton_params, sim, delta_t, width=1, plot_3d=False, name=None):
     """
     Collect E component along center line (x_0:x_end, 0, 0) at intervals of delta_t.
     The returned ey_line is the mean across a vertical "width":
@@ -115,8 +115,9 @@ def collect_e_line(singleton_params, sim, delta_t=1.0, width=1, plot_3d=False, n
     if len(collected_data) == 0:
         return collected_data, time_steps, None
 
-    if plot_3d:
-        plot_e_3d(collected_data, x_coords, time_steps, name=name, IMG_CLOSE=singleton_params.IMG_CLOSE)
+    if plot_3d: 
+        save_name = os.path.join(singleton_params.path_to_save, f"3Dplot_profile_{name}.png")
+        plot_e_3d(collected_data, x_coords, time_steps, name=save_name, IMG_CLOSE=singleton_params.IMG_CLOSE)
 
     return collected_data, time_steps, x_coords
 
@@ -148,7 +149,7 @@ def plot_e_3d(collected_data, x_coords, time_steps, name=None, IMG_CLOSE=False):
     
     # Adjust viewpoint: elev controls vertical angle, azim controls horizontal angle
     ax.view_init(elev=20, azim=45)
-    plt.savefig(os.path.join("results", f"3Dplot_profile_{name}.png"), dpi=300, bbox_inches="tight", format="png")
+    plt.savefig(name, dpi=300, bbox_inches="tight", format="png")
     if IMG_CLOSE:
         plt.show(block=False)
         plt.pause(2)
@@ -156,7 +157,7 @@ def plot_e_3d(collected_data, x_coords, time_steps, name=None, IMG_CLOSE=False):
     else:
         plt.show()
     
-def collect_max_field(singleton_params, sim, skip_fraction=0.5, delta_t=0.031377):
+def collect_max_field(singleton_params, sim, delta_t, skip_fraction=0.5, optional_name="NAME"):
     """
     Collects the maximum value of the component field at each spatial point 
     across the simulation duration, skipping the first skip_fraction of time.
@@ -192,6 +193,11 @@ def collect_max_field(singleton_params, sim, skip_fraction=0.5, delta_t=0.031377
     # Initialize E_maxes as a zero array with the same shape as collected_data[0]
     E_maxes = np.zeros_like(collected_data[0], dtype=float)
 
+    np.savez(
+        os.path.join(singleton_params.path_to_save, "anim_collected_data_f{optional_name}.npz"),
+        current_data = collected_data
+        )
+    
     # For each time step, update E_maxes if the current value is greater
     for i in range(len(collected_data)):
         current_data = collected_data[i]

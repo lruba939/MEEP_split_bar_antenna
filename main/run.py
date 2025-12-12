@@ -5,6 +5,13 @@ from src.taskManager import *
 from utils.sys_utils import *
 
 def run():
+    
+    ### Set paths to save results
+    SIM_NAME = "TEST"
+    #############################
+    
+    p.path_to_save = os.path.join("results", SIM_NAME)
+    p.animations_folder_path = os.path.join(p.path_to_save, "animations")
 
     #--- Task 0 ---
     print_task(0, "Triggering calculations and saving the most general results.")
