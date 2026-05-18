@@ -28,7 +28,7 @@ def bowtie_substrate_experiment(material_name):
     X_material = get_materials_dict(material_name)
     X_material_name = material_name
     
-    SIM_NAME = f"BSE_Au{X_material_name}_wavleng_{config.lambda0}_gap_{gap}"
+    SIM_NAME = f"BSE_NTM_Au{X_material_name}_wavleng_{config.lambda0}_gap_{gap}"
     config.path_to_save, config.animations_folder_path = create_directory(SIM_NAME)
     # =====================================================
     AuTop = BowTieEquilateral(
@@ -72,7 +72,7 @@ def bowtie_substrate_experiment(material_name):
 
     config.nfreq = 500
     config.z_reflection = config.cell_size[2]/2.0-1.20*config.pml
-    config.z_transmission = -(config.cell_size[2]/2.0-1.15*config.pml)
+    config.z_transmission = -config.cell_size[2]/2.0+config.pml+15/xm
 
     antenna_vols = VolumeSetROI(cell, antenna=AuTop)
 
@@ -192,7 +192,7 @@ def bowtie_substrate_experiment_LT(material_name):
 
     config.nfreq = 500
     config.z_reflection = config.cell_size[2]/2.0-1.20*config.pml
-    config.z_transmission = -(config.cell_size[2]/2.0-1.15*config.pml)
+    config.z_transmission = -config.cell_size[2]/2.0+config.pml+15/xm
 
     antenna_vols = VolumeSetROI(cell, antenna=AuTop)
 
@@ -323,7 +323,7 @@ def bowtie_substrate_experiment_MIR(material_name):
 
     config.nfreq = 500
     config.z_reflection = config.cell_size[2]/2.0-1.20*config.pml
-    config.z_transmission = -(config.cell_size[2]/2.0-1.15*config.pml)
+    config.z_transmission = -config.cell_size[2]/2.0+config.pml+15/xm
 
     antenna_vols = VolumeSetROI(cell, antenna=AuTop)
 
@@ -443,7 +443,7 @@ def bowtie_substrate_ONLY_experiment(material_name):
 
     config.nfreq = 500
     config.z_reflection = config.cell_size[2]/2.0-1.20*config.pml
-    config.z_transmission = -(config.cell_size[2]/2.0-1.15*config.pml)
+    config.z_transmission = -config.cell_size[2]/2.0+config.pml+15/xm
 
     antenna_vols = VolumeSetROI(cell, antenna=AuTop)
 
