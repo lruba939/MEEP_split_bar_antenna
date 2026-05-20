@@ -909,6 +909,35 @@ def plot_field_frame_from_h5_physical(
             mean_val = np.mean(frame_raw[roi_mask])
 
     # ---------------------------
+    # SAVE MEAN/MAX
+    # ---------------------------
+    max_val = np.max(frame_raw)
+
+    if save_path is not None:
+
+        plane = dataset_name
+
+        dat_name = f"fef_{plane}.dat"
+
+        dat_path = os.path.join(
+            save_path,
+            dat_name
+        )
+
+        # append mode
+        with open(dat_path, "a") as f:
+
+            # header tylko raz
+            if os.path.getsize(dat_path) == 0:
+
+                f.write(f"# {plane}\n")
+                f.write("# meanval maxval\n")
+
+            f.write(
+                f"{mean_val:.6g} {max_val:.6g}\n"
+            )
+
+    # ---------------------------
     # COLOR SCALE
     # ---------------------------
     if vmin is None:
@@ -995,6 +1024,34 @@ def plot_field_frame_from_h5_physical(
             os.path.join(save_path, save_name),
             dpi=300,
             bbox_inches="tight",
+        )
+
+    # ---------------------------
+    # SAVE RAW FRAME
+    # ---------------------------
+    if save_path is not None:
+
+        base = os.path.splitext(
+            os.path.basename(h5_filename)
+        )[0]
+
+        raw_name = (
+            f"{base}_frame_{frame_index}.npz"
+        )
+
+        np.savez(
+            os.path.join(save_path, raw_name),
+
+            field=frame_plot,
+
+            x=x_phys,
+
+            y=y_phys,
+        )
+
+        print(
+            "Saved raw frame:",
+            os.path.join(save_path, raw_name)
         )
 
     # ---------------------------

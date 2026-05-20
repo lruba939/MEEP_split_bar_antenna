@@ -119,19 +119,19 @@ def bowtie_substrate_experiment(material_name):
             path_to_save=config.path_to_save,
             IMG_CLOSE=config.IMG_CLOSE
         )
-    # =====================================================
-    print_task(3, "3D calculations.")
-    compute_fields(
-        sim,
-        sim_empty,
-        antenna_vols,
-        config,
-        fluxes=True,
-        scattering=True,
-        dft_gap_spectrum=True,
-        harminv=True,
-        scattering_antenna=AuTop
-    )
+    # # =====================================================
+    # print_task(3, "3D calculations.")
+    # compute_fields(
+    #     sim,
+    #     sim_empty,
+    #     antenna_vols,
+    #     config,
+    #     fluxes=True,
+    #     scattering=True,
+    #     dft_gap_spectrum=True,
+    #     harminv=True,
+    #     scattering_antenna=AuTop
+    # )
     return 0
 
 def bowtie_substrate_experiment_LT(material_name):
@@ -519,7 +519,7 @@ def after_hpc_redraw(material_name):
     X_material = get_materials_dict(material_name)
     X_material_name = material_name
     
-    SIM_NAME = f"BSE_Au{X_material_name}_wavleng_{config.lambda0}_gap_{gap}"
+    SIM_NAME = f"BSE_NTM_Au{X_material_name}_wavleng_{config.lambda0}_gap_{gap}"
     config.path_to_save, config.animations_folder_path = create_directory(SIM_NAME)
     # =====================================================
     AuTop = BowTieEquilateral(
@@ -588,15 +588,15 @@ def after_hpc_redraw(material_name):
         dimensions=3
         )
 
-    # =====================================================
-    print_task(4, "Postprocesing - raw animations for X.")
-    animate_raw_fields(config=config, mode="BOTH", component="X")
-    # =====================================================
-    print_task(4, "Postprocesing - raw animations for Y.")
-    animate_raw_fields(config=config, mode="BOTH", component="Y")
-    # =====================================================
-    print_task(4, "Postprocesing - raw animations for Z.")
-    animate_raw_fields(config=config, mode="BOTH", component="Z")
+    # # =====================================================
+    # print_task(4, "Postprocesing - raw animations for X.")
+    # animate_raw_fields(config=config, mode="BOTH", component="X")
+    # # =====================================================
+    # print_task(4, "Postprocesing - raw animations for Y.")
+    # animate_raw_fields(config=config, mode="BOTH", component="Y")
+    # # =====================================================
+    # print_task(4, "Postprocesing - raw animations for Z.")
+    # animate_raw_fields(config=config, mode="BOTH", component="Z")
     # =====================================================
     print_task(3, "3D calculations.")
     compute_fields(
@@ -639,22 +639,22 @@ def after_hpc_redraw(material_name):
         },
     }
     print_task(5, "Postprocesing - animations and plots.")
-    animate_enhancement_fields(config=config, volumes=antenna_vols, draw_params=draw_params, animate=True)
-    # =====================================================
-    plot_signal_amplitude_vs_time_from_h5(
-        "xyplanar-empty_ex.h5",
-        load_h5data_path=config.path_to_save,
-        xzeros=0,
-        time_step=config.sim_time_step,
-        save_name=f"source_prof_empty"
-    )
-    plot_signal_amplitude_vs_time_from_h5(
-        "xyplanar_ex.h5",
-        load_h5data_path=config.path_to_save,
-        xzeros=0,
-        time_step=config.sim_time_step,
-        save_name=f"source_prof_antenna"
-    ) 
+    animate_enhancement_fields(config=config, volumes=antenna_vols, draw_params=draw_params, animate=False)
+    # # =====================================================
+    # plot_signal_amplitude_vs_time_from_h5(
+    #     "xyplanar-empty_ex.h5",
+    #     load_h5data_path=config.path_to_save,
+    #     xzeros=0,
+    #     time_step=config.sim_time_step,
+    #     save_name=f"source_prof_empty"
+    # )
+    # plot_signal_amplitude_vs_time_from_h5(
+    #     "xyplanar_ex.h5",
+    #     load_h5data_path=config.path_to_save,
+    #     xzeros=0,
+    #     time_step=config.sim_time_step,
+    #     save_name=f"source_prof_antenna"
+    # ) 
     return 0
 
 def split_bar_AuTiX():
