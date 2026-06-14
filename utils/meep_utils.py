@@ -583,6 +583,8 @@ def compute_fields(
     calc_H=False,
     calc_DPWR=False,
     fluxes=True,
+    fluxes_X_size=None,
+    fluxes_Y_size=None,
     scattering=True,
     dft_gap_spectrum=False,
     scattering_antenna=None,
@@ -648,19 +650,24 @@ def compute_fields(
     # FLUX MONITORS
     # ============================================================
     if fluxes:
+        if fluxes_X_size is None:
+            fluxes_X_size = config.src_size[0]
+        if fluxes_Y_size is None:
+            fluxes_Y_size = config.src_size[1]
+    
         refl_fr = mp.FluxRegion(
             center=mp.Vector3(0, 0, config.z_reflection),
             size=mp.Vector3(
-                config.src_size[0],
-                config.src_size[1],
+                fluxes_X_size,
+                fluxes_Y_size,
                 0)
         )
 
         tran_fr = mp.FluxRegion(
             center=mp.Vector3(0, 0, config.z_transmission),
             size=mp.Vector3(
-                config.src_size[0],
-                config.src_size[1],
+                fluxes_X_size,
+                fluxes_Y_size,
                 0)
         )
 

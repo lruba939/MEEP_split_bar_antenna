@@ -24,10 +24,12 @@ def run():
 
     elif mode == 5:
         after_hpc_redraw(material_name)
+
+    elif mode == 6:
+        bowtie_big_substrate_experiment(material_name)
     
     else:
-        print("Invalid mode. Please choose a mode between 1 and 5.")
-
+        print("Invalid mode. Please choose a mode between 1 and 6.")
 
 if __name__ == "__main__":
     run()
