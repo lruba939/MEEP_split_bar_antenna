@@ -1,10 +1,57 @@
 import meep as mp
+from meep.materials import *
 import numpy as np
 import os
 from utils.logger import append_time_to_file
 
 from visualization.plotter import *
 # !!!!!!!!! ---> from main.src.simulation import * # CANT IMPORT DUE TO CIRCULAR DEPENDENCY
+
+def get_materials_dict(material_name=None):
+    materials = {
+        # dielectrics / semiconductors
+        "air": mp.air,
+        "cSi": cSi,
+        "aSi": aSi,
+        "SiO2": SiO2,
+        "ITO": ITO,
+        "Al2O3": Al2O3,
+        "GaAs": GaAs,
+        "AlAs": AlAs,
+        "AlN": AlN,
+        "BK7": BK7,
+        "FQ": fused_quartz,
+        "Si3N4": Si3N4,
+        "Ge": Ge,
+        "InP": InP,
+        "GaN": GaN,
+        "CdTe": CdTe,
+        "LiNbO3": LiNbO3,
+        "BaB2O4": BaB2O4,
+        "CaWO4": CaWO4,
+        "CaCO3": CaCO3,
+        "Y2O3": Y2O3,
+        "YAG": YAG,
+        "PMMA": PMMA,
+        # metals
+        "Ag": Ag,
+        "Au": Au,
+        "Cu": Cu,
+        "Al": Al,
+        "Be": Be,
+        "Cr": Cr,
+        "Ni": Ni,
+        "Pd": Pd,
+        "Pt": Pt,
+        "Ti": Ti,
+        "W": W,
+    }
+    if material_name not in materials:
+        raise ValueError(f"Unknown material: {material_name}")
+    if material_name is None:
+        return materials["air"]
+
+    return materials[material_name]
 
 def collect_fields_with_output(
     sim,
@@ -536,6 +583,8 @@ def compute_fields(
     calc_H=False,
     calc_DPWR=False,
     fluxes=True,
+    fluxes_X_size=None,
+    fluxes_Y_size=None,
     scattering=True,
     dft_gap_spectrum=False,
     scattering_antenna=None,
@@ -601,19 +650,24 @@ def compute_fields(
     # FLUX MONITORS
     # ============================================================
     if fluxes:
+        if fluxes_X_size is None:
+            fluxes_X_size = config.src_size[0]
+        if fluxes_Y_size is None:
+            fluxes_Y_size = config.src_size[1]
+    
         refl_fr = mp.FluxRegion(
             center=mp.Vector3(0, 0, config.z_reflection),
             size=mp.Vector3(
-                config.src_size[0],
-                config.src_size[1],
+                fluxes_X_size,
+                fluxes_Y_size,
                 0)
         )
 
         tran_fr = mp.FluxRegion(
             center=mp.Vector3(0, 0, config.z_transmission),
             size=mp.Vector3(
-                config.src_size[0],
-                config.src_size[1],
+                fluxes_X_size,
+                fluxes_Y_size,
                 0)
         )
 
@@ -742,7 +796,7 @@ def compute_fields(
         # --- corner of antena ---
         # To have the same distance from the corner to the point as from the main corner to the gap center,
         # we need to take the angle into account
-        corner_deg = np.atan(scattering_antenna.width / 2 / scattering_antenna.length)
+        corner_deg = np.arctan(scattering_antenna.width / 2 / scattering_antenna.length)
         corner_cx = cx + scattering_antenna.gap/2 + scattering_antenna.length + (scattering_antenna.gap/2.0)*np.cos(corner_deg) 
         corner_cy = cy + scattering_antenna.width/2 + (scattering_antenna.gap/2.0)*np.sin(corner_deg)
         tip_points = [

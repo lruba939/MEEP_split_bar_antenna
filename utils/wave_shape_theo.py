@@ -22,17 +22,17 @@ def gaussian_wave_meep(t, f0, fwidth, distance,
         
 def main():
     cutoff = 5
-    wavelength = 6000/xm
+    wavelength = 1700/xm
     f0 = 1 / wavelength
 
-    fw = 1
+    fw = 0.4
 
     wstart = 1/(f0 + fw)
     wstop = 1/(f0 - fw)
     
     distance = (420/2.0 - 100*1.05)/xm
 
-    t = np.linspace(0, 18, 2000)
+    t = np.linspace(0, 40, 2000)
 
     plt.figure(figsize=(10, 6))
 

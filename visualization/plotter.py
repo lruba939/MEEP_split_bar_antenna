@@ -1,3 +1,6 @@
+# import matplotlib
+# matplotlib.use("Agg")
+# 
 import numpy as np
 import os, h5py, meep, sys, gc
 import matplotlib.pyplot as plt
@@ -13,7 +16,13 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 ## Font
 from matplotlib import font_manager
-font_path = "visualization/fonts/LiberationSerif-Regular.ttf"
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+font_path = os.path.join(
+    BASE_DIR,
+    "fonts",
+    "LiberationSerif-Regular.ttf"
+)
 font_manager.fontManager.addfont(font_path)
 rcParams['font.family'] = 'Liberation Serif'
 rcParams['font.size'] = 14
@@ -900,6 +909,35 @@ def plot_field_frame_from_h5_physical(
             mean_val = np.mean(frame_raw[roi_mask])
 
     # ---------------------------
+    # SAVE MEAN/MAX
+    # ---------------------------
+    max_val = np.max(frame_raw)
+
+    if save_path is not None:
+
+        plane = dataset_name
+
+        dat_name = f"fef_{plane}.dat"
+
+        dat_path = os.path.join(
+            save_path,
+            dat_name
+        )
+
+        # append mode
+        with open(dat_path, "a") as f:
+
+            # header tylko raz
+            if os.path.getsize(dat_path) == 0:
+
+                f.write(f"# {plane}\n")
+                f.write("# meanval maxval\n")
+
+            f.write(
+                f"{mean_val:.6g} {max_val:.6g}\n"
+            )
+
+    # ---------------------------
     # COLOR SCALE
     # ---------------------------
     if vmin is None:
@@ -989,6 +1027,34 @@ def plot_field_frame_from_h5_physical(
         )
 
     # ---------------------------
+    # SAVE RAW FRAME
+    # ---------------------------
+    if save_path is not None:
+
+        base = os.path.splitext(
+            os.path.basename(h5_filename)
+        )[0]
+
+        raw_name = (
+            f"{base}_frame_{frame_index}.npz"
+        )
+
+        np.savez(
+            os.path.join(save_path, raw_name),
+
+            field=frame_plot,
+
+            x=x_phys,
+
+            y=y_phys,
+        )
+
+        print(
+            "Saved raw frame:",
+            os.path.join(save_path, raw_name)
+        )
+
+    # ---------------------------
     # CLEANUP
     # ---------------------------
     if not IMG_CLOSE:
@@ -1074,11 +1140,17 @@ def show_data_img(datas_arr, abs_bool, norm_bool, cmap_arr, alphas, name_to_save
     else:
         plt.show()
 
-def save_2D_plot(sim, volume, save_name="2Dplot.png", IMG_SAVE=True, path_to_save=None, IMG_CLOSE=False):
+def save_2D_plot(sim, volume, save_name="2Dplot.png", IMG_SAVE=True, path_to_save=None, IMG_CLOSE=False, config=None):
     if meep.am_master():
         sim.plot2D(output_plane=volume,
                 eps_parameters={'alpha':0.8, 'cmap':'binary', 'interpolation':'spline36', 'frequency':1/0.2},
                 boundary_parameters={'hatch':'o', 'linewidth':1.5, 'facecolor':'y', 'edgecolor':'b', 'alpha':0.3})
+        if config is not None:
+            if save_name is not None and any(axis in save_name for axis in ("XZ", "YZ")):
+                plt.hlines(config.z_reflection, -config.cell_size[0]/2.0, config.cell_size[0]/2.0, color='blue', linestyle='--', linewidth=1.0)
+                plt.hlines(config.z_transmission, -config.cell_size[0]/2.0, config.cell_size[0]/2.0, color='red', linestyle='--', linewidth=1.0)
+                plt.text(-config.cell_size[0]/2.1, config.z_reflection*1.1, 'R', color='blue', fontsize=12)
+                plt.text(-config.cell_size[0]/2.1, config.z_transmission*0.9, 'T', color='red', fontsize=12)
 
         if IMG_SAVE:
             plt.savefig(os.path.join(path_to_save, save_name), dpi=300, bbox_inches="tight", format="png")

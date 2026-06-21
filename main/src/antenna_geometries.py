@@ -225,12 +225,12 @@ class BowTie(AntennaBase):
 
             bow_tie += clear_edges_bowtie(
                 points=[P1, P2, P3],
-                antenna=self
+                antenna=self,
             )
 
             bow_tie += clear_edges_bowtie(
                 points=[P1 * mirror, P2 * mirror, P3 * mirror],
-                antenna=self
+                antenna=self,
             )
 
             bow_tie += fillet_bowtie(
