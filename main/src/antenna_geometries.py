@@ -1,8 +1,8 @@
 from abc import ABC, abstractmethod
 import numpy as np
 import meep as mp
-from meep.materials import Au, Ti, SiO2
 from utils.geometry_utils import *
+from utils.meep_utils import get_materials_dict
 xm = 1000
 
 # =========================================================
@@ -31,7 +31,7 @@ class BowTieEquilateral(AntennaBase):
                  length,
                  thickness,
                  radius,
-                 material,
+                 material_name,
                  z_offset=0.0,
                  center=(0.0, 0.0)):
 
@@ -41,7 +41,8 @@ class BowTieEquilateral(AntennaBase):
         self.width = 2*length*np.tan(np.deg2rad(30))
         self.thickness = thickness
         self.radius = radius
-        self.material = material
+        self.material_name = material_name
+        self.material = get_materials_dict(material_name)
         self.z_offset = z_offset
         self.center = np.array(center)
 
@@ -147,7 +148,7 @@ class BowTie(AntennaBase):
                  length,
                  width,
                  thickness,
-                 material,
+                 material_name,
                  z_offset=0.0,
                  center=(0.0, 0.0),
                  radius=0.0):
@@ -158,7 +159,8 @@ class BowTie(AntennaBase):
         self.width = width
         self.thickness = thickness
         self.radius = radius
-        self.material = material
+        self.material_name = material_name
+        self.material = get_materials_dict(material_name)
         self.z_offset = z_offset
         self.center = np.array(center)
 
@@ -266,7 +268,7 @@ class SplitBar(AntennaBase):
                  length,
                  width,
                  thickness,
-                 material,
+                 material_name,
                  z_offset=0.0,
                  center=(0.0, 0.0),
                  radius=0.0):
@@ -275,7 +277,8 @@ class SplitBar(AntennaBase):
         self.length = length
         self.width = width
         self.thickness = thickness
-        self.material = material
+        self.material_name = material_name
+        self.material = get_materials_dict(material_name)
         self.z_offset = z_offset
         self.center = np.array(center)
         self.radius = radius
@@ -355,7 +358,7 @@ class Bar(AntennaBase):
                  length,
                  width,
                  thickness,
-                 material,
+                 material_name,
                  z_offset=0.0,
                  center=(0.0, 0.0),
                  radius=0.0):
@@ -363,7 +366,8 @@ class Bar(AntennaBase):
         self.length = length
         self.width = width
         self.thickness = thickness
-        self.material = material
+        self.material_name = material_name
+        self.material = get_materials_dict(material_name)
         self.z_offset = z_offset
         self.center = np.array(center)
         self.radius = radius

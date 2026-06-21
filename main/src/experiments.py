@@ -14,7 +14,7 @@ from visualization.plotter import *
 xm = 1000
 mp.Simulation.eps_averaging = False
 
-def bowtie_substrate_experiment(material_name):
+def bowtie_substrate_experiment(material_name, COMMENT=None):
     # =====================================================
     config = SimulationConfig()
 
@@ -23,32 +23,28 @@ def bowtie_substrate_experiment(material_name):
     config.sim_time_step = 50 / xm
     config.lambda0 = 660 / xm
     config.frequency_width = 1.0
+
     gap = 6
 
-    X_material = get_materials_dict(material_name)
-    X_material_name = material_name
-    
-    SIM_NAME = f"NS_smallsrc_bigdet_F_BSE_Au_on_{X_material_name}_wavleng_{config.lambda0}_gap_{gap}"
-    config.path_to_save, config.animations_folder_path = create_directory(SIM_NAME)
     # =====================================================
-    AuTop = BowTieEquilateral(
+    Top = BowTieEquilateral(
         gap=gap/xm,
         length=86.6/xm, # <- to have about 100 nm in width
         thickness=30/xm,
         radius=5/xm,
-        material=Au,
+        material_name="Au",
         z_offset=0.0
     )
     substrate = Bar(
         length=800/xm,
         width=800/xm,
         thickness=100/xm,
-        material=X_material,
+        material_name=material_name,
         z_offset=-(30/2.0+100/2.0)/xm,
         radius=12/xm,
     )
 
-    geometry = AuTop.build_geometry() + substrate.build_geometry()
+    geometry = Top.build_geometry() + substrate.build_geometry()
     geometry_empty = substrate.build_geometry()
 
     config.pad = 80/xm
@@ -56,7 +52,7 @@ def bowtie_substrate_experiment(material_name):
     config.cell_size = [
         substrate.length + 2*config.pad + 2*config.pml,   # x
         substrate.width + 2*config.pad + 2*config.pml,   # y
-        substrate.thickness+AuTop.thickness + 2*config.pad + 2*config.pml    # z
+        substrate.thickness+Top.thickness + 2*config.pad + 2*config.pml    # z
     ]
     cell = make_cell(config=config)
 
@@ -79,7 +75,7 @@ def bowtie_substrate_experiment(material_name):
     config.z_reflection = config.cell_size[2]/2.0-1.20*config.pml
     config.z_transmission = -config.cell_size[2]/2.0+config.pml+15/xm
 
-    antenna_vols = VolumeSetROI(cell, antenna=AuTop)
+    antenna_vols = VolumeSetROI(cell, antenna=Top)
     sim = mp.Simulation(
         cell_size=cell,
         boundary_layers=[mp.PML(config.pml)],
@@ -101,7 +97,20 @@ def bowtie_substrate_experiment(material_name):
         dimensions=3
         )
     # =====================================================
-    save_and_show_config(config, [AuTop, substrate])
+    SIM_NAME = build_folder_name(
+        structure="bowtie",
+        wavelength_nm=config.lambda0 * xm,
+        gap_nm=Top.gap * xm,
+        antenna_material=Top.material_name,
+        substrate_material=substrate.material_name,
+        L=Top.length * xm,
+        T=Top.thickness * xm,
+        R=Top.radius * xm
+    )
+
+    config.path_to_save, config.animations_folder_path = create_directory(SIM_NAME)
+    # =====================================================
+    save_and_show_config(config, [Top, substrate], COMMENT=COMMENT)
     # =====================================================
     print_task(1, "2D projections.")
     for plane in ["XY", "XZ", "YZ"]:
@@ -136,33 +145,33 @@ def bowtie_substrate_experiment(material_name):
             IMG_CLOSE=config.IMG_CLOSE,
             config=config
         )
-    print_task(2, "2D projections.")
-    for plane in ["XY", "XZ", "YZ"]:
-        Name2D = f"empty_roi_{plane}.png"
-        save_2D_plot(
-            sim_empty,
-            antenna_vols.volume[plane],
-            save_name=Name2D,
-            path_to_save=config.path_to_save,
-            IMG_CLOSE=config.IMG_CLOSE
-        )
-    # =====================================================
-    print_task(3, "3D calculations.")
-    compute_fields(
-        sim,
-        sim_empty,
-        antenna_vols,
-        config,
-        fluxes=True,
-        # fluxes_X_size=substrate.length/2.0,
-        # fluxes_Y_size=substrate.width/2.0,
-        fluxes_X_size=config.cell_size[0],
-        fluxes_Y_size=config.cell_size[1],
-        scattering=True,
-        dft_gap_spectrum=True,
-        harminv=True,
-        scattering_antenna=AuTop
-    )
+    # print_task(2, "2D projections.")
+    # for plane in ["XY", "XZ", "YZ"]:
+    #     Name2D = f"empty_roi_{plane}.png"
+    #     save_2D_plot(
+    #         sim_empty,
+    #         antenna_vols.volume[plane],
+    #         save_name=Name2D,
+    #         path_to_save=config.path_to_save,
+    #         IMG_CLOSE=config.IMG_CLOSE
+    #     )
+    # # =====================================================
+    # print_task(3, "3D calculations.")
+    # compute_fields(
+    #     sim,
+    #     sim_empty,
+    #     antenna_vols,
+    #     config,
+    #     fluxes=True,
+    #     # fluxes_X_size=substrate.length/2.0,
+    #     # fluxes_Y_size=substrate.width/2.0,
+    #     fluxes_X_size=config.cell_size[0],
+    #     fluxes_Y_size=config.cell_size[1],
+    #     scattering=True,
+    #     dft_gap_spectrum=True,
+    #     harminv=True,
+    #     scattering_antenna=Top
+    # )
     return 0
 
 def bowtie_big_substrate_experiment(material_name):

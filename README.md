@@ -346,19 +346,20 @@ that allows one to calculate the half-wavelength of a dipole antenna and the eff
 ![effwave](Assets/eff_wave_novotny2007.png)
 
 ## To Do:
-- [ ] Fixes for parallel calculations 
-- [ ] Warning before calculations that we asume PML
-- [ ] Flux monitors:
-	- [ ] Transimtance monitor
-	- [ ] Reflectance monitor
-- [ ] Add scattering calculations (DFT flux boxes)
-- [ ] Refactor the plotter
-    - [ ] Add structure to animations
-    - [ ] Add functions for 3D drawing of the used structure
+- [ ] Load data for empty cell
+- [ ] Calcs for substrate and antenna-substrate system
 - [ ] Integrate Novotny (2007) calculations into the main code
 	- [ ] Take eps data from meep.materials for Novotny model
 
 ## Done:
+- [x] Add comments to experiment.txt
+- [x] Better dir namespace
+- [x] Add scattering calculations (DFT flux boxes)
+- [x] Flux monitors:
+	- [x] Transimtance monitor
+	- [x] Reflectance monitor
+- [x] Warning before calculations that we asume PML
+- [x] Fixes for parallel calculations 
 - [x] Get rid of params.py file
     - [x] Remove calculations
     - [x] Remove geometry definitions
@@ -368,7 +369,7 @@ that allows one to calculate the half-wavelength of a dipole antenna and the eff
 - [x] Move geometry definitions to separate files
     - [x] Add bow-tie antenna
     - [x] Add split-bar antenna
-    - [x] Add Half-dipol antenna
+    - [x] Add half-dipol antenna
 - [x] Source visualization procces:
 	- [x] Spectrum of source intensity in time
 	- [x] Conclusions

@@ -7,9 +7,9 @@ from meep.materials import Au, Ti, SiO2, Pd
 # MAIN LOGGER FUNCTION
 # --------------------------------------------------------
 
-def save_and_show_config(config, antenna):
+def save_and_show_config(config, antenna, COMMENT=None):
     show_experiment(config, antenna)
-    save_experiment(config, antenna)
+    save_experiment(config, antenna, COMMENT=COMMENT)
     append_time_to_file(config, prefix="Start time: ")
     return 0
 
@@ -108,7 +108,7 @@ def show_experiment(config, antennas):
 # SAVE
 # --------------------------------------------------------
 
-def save_experiment(config, antennas, filename=None):
+def save_experiment(config, antennas, filename=None, COMMENT=None):
     if mp.am_master():
         if filename is None:
             filename = os.path.join(config.path_to_save, "experiment.txt")
@@ -120,6 +120,14 @@ def save_experiment(config, antennas, filename=None):
             antennas = [antennas]
 
         with open(filename, "w") as f:
+            # ---- Comment ----
+            if COMMENT is None:
+                COMMENT = "No comment"
+            f.write("#################################\n")
+            f.write("COMMENT\n")
+            f.write("#################################\n")
+            f.write(f"{COMMENT}\n")
+            f.write("#################################\n")
 
             f.write("\n\n#################################\n")
             f.write("EXPERIMENT CONFIGURATION\n")
