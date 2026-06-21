@@ -348,6 +348,7 @@ that allows one to calculate the half-wavelength of a dipole antenna and the eff
 ## To Do:
 - [ ] Load data for empty cell
 - [ ] Calcs for substrate and antenna-substrate system
+- [ ] Autosave source shape in Hz and um
 - [ ] Integrate Novotny (2007) calculations into the main code
 	- [ ] Take eps data from meep.materials for Novotny model
 
@@ -374,5 +375,3 @@ that allows one to calculate the half-wavelength of a dipole antenna and the eff
 	- [x] Spectrum of source intensity in time
 	- [x] Conclusions
 - [x] Warning about PML and wavelength
-- [x] New geometries
-    - [x] Add a bow-tie of different lengths
