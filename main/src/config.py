@@ -39,6 +39,13 @@ class SimulationConfig:
         ]
 
         # =====================================================
+        # PATHS
+        # =====================================================
+        self.path_to_save           =   "results/"
+        self.animations_folder_path =   os.path.join(self.path_to_save, "animations")
+        self.empty_reference_path = os.path.join(self.path_to_save, "EMPTY_REFERENCE")
+
+        # =====================================================
         # CELL
         # =====================================================
 
@@ -82,12 +89,11 @@ class SimulationConfig:
         self.z_transmission = -15.0 / xm
 
         # =====================================================
-        # ANIMATIONS
+        # PLOTS AND ANIMATIONS
         # =====================================================
         self.IMG_CLOSE = True
-        self.animations_fps         =   15
-        self.path_to_save           =   "results/"
-        self.animations_folder_path =   os.path.join(self.path_to_save, "animations")
+        self.animations_fps = 15
+
 
     # --------------------------------------------------------
 

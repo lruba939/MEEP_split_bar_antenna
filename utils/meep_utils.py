@@ -3,6 +3,7 @@ from meep.materials import *
 import numpy as np
 import os
 from utils.logger import append_time_to_file
+import pickle
 
 from visualization.plotter import *
 # !!!!!!!!! ---> from main.src.simulation import * # CANT IMPORT DUE TO CIRCULAR DEPENDENCY
@@ -596,7 +597,7 @@ def compute_fields(
     Parameters
     ----------
     mode : str
-        "WITH_ANTENNA", "EMPTY", "BOTH" or "ENH_ONLY"
+        "WITH_ANTENNA", "EMPTY", "BOTH", "ENH_ONLY" or "WITH_EMPTY_CACHE"
 
     calc_E : bool
         Whether to calculate E-field enhancement.
@@ -608,7 +609,7 @@ def compute_fields(
         Whether to calculate power density fields.
     """
 
-    valid_modes = ["WITH_ANTENNA", "EMPTY", "BOTH", "ENH_ONLY"]
+    valid_modes = ["WITH_ANTENNA", "EMPTY", "BOTH", "ENH_ONLY", "WITH_EMPTY_CACHE"]
 
     if mode not in valid_modes:
         raise ValueError(f"mode must be one of {valid_modes}")
@@ -616,32 +617,12 @@ def compute_fields(
     # ============================================================
     # Plane configuration
     # ============================================================
-
     planes = {
         "xyplanar": volumes.volume["XY"],
         "xyplanarTOP": volumes.volume["XY_TOP"],
         "xzplanar": volumes.volume["XZ"],
         "yzplanar": volumes.volume["YZ"],
     }
-
-    if volumes.extra:
-        planes.update({
-            "xyplanar_1": volumes.volume["XY_1"],
-            "xyplanar_2": volumes.volume["XY_2"],
-            "xyplanar_3": volumes.volume["XY_3"],
-            "xyplanar_4": volumes.volume["XY_4"],
-            "xyplanar_5": volumes.volume["XY_5"],
-            "xzplanar_1": volumes.volume["XZ_1"],
-            "xzplanar_2": volumes.volume["XZ_2"],
-            "xzplanar_3": volumes.volume["XZ_3"],
-            "xzplanar_4": volumes.volume["XZ_4"],
-            "xzplanar_5": volumes.volume["XZ_5"],
-            "yzplanar_1": volumes.volume["YZ_1"],
-            "yzplanar_2": volumes.volume["YZ_2"],
-            "yzplanar_3": volumes.volume["YZ_3"],
-            "yzplanar_4": volumes.volume["YZ_4"],
-            "yzplanar_5": volumes.volume["YZ_5"],
-        })
 
     fcen = config.frequency
     df = config.frequency_width
@@ -833,7 +814,6 @@ def compute_fields(
     # ============================================================
     # EMPTY STRUCTURE
     # ============================================================
-
     if mode in ["EMPTY", "BOTH"]:
         if mp.am_master():
             print("Running simulation WITHOUT antenna")
@@ -900,8 +880,6 @@ def compute_fields(
     # ============================================================
     # WITH ANTENNA
     # ============================================================
-
-
     if mode in ["WITH_ANTENNA", "BOTH"]:
         if mp.am_master():
             print("Running simulation WITH antenna")
@@ -1060,7 +1038,6 @@ def compute_fields(
     # ============================================================
     # ENHANCEMENT CALCULATION
     # ============================================================
-
     if (mode == "BOTH" or mode == "ENH_ONLY") and mp.am_master():
         if mp.am_master():
             print("Computing enhancement maps")
@@ -1072,25 +1049,6 @@ def compute_fields(
             "xzplanar",
             "yzplanar",
         ]
-
-        if volumes.extra:
-            enhancement_planes.extend([
-                "xyplanar_1",
-                "xyplanar_2",
-                "xyplanar_3",
-                "xyplanar_4",
-                "xyplanar_5",
-                "xzplanar_1",
-                "xzplanar_2",
-                "xzplanar_3",
-                "xzplanar_4",
-                "xzplanar_5",
-                "yzplanar_1",
-                "yzplanar_2",
-                "yzplanar_3",
-                "yzplanar_4",
-                "yzplanar_5",
-            ])
 
         # ---------- E FIELD ENHANCEMENT ----------
         if calc_E:
@@ -1929,3 +1887,435 @@ def compute_harminv(
         save_name="harminv_error.png",
     )
     return all_data
+
+def run_structure(
+    sim,
+    structure_name,
+    planes,
+    config,
+    calc_E=True,
+    calc_H=False,
+    calc_DPWR=False,
+    TRL=False,
+    TRL_monitors=None,
+    scattering=False,
+    scattering_monitors=None,
+    dft_gap_spectrum=False,
+    dft_monitors=None,
+    harminv=False,
+    harminv_objects=None,
+):
+    """
+    Run arbitrary structure simulation and collect raw data.
+
+    structure_name:
+        "empty"
+        "substrate"
+        "antenna"
+        or any future structure
+
+    Returns
+    -------
+    dict
+        Raw simulation results.
+    """
+
+    cache_dir = os.path.join(
+        config.path_to_save,
+        "cache",
+        structure_name,
+    )
+
+    os.makedirs(cache_dir, exist_ok=True)
+
+    if mp.am_master():
+        print(f"Running structure: {structure_name}")
+        append_time_to_file(
+            config,
+            prefix=f"Running structure {structure_name}: "
+        )
+
+    # =====================================================
+    # HARMINV CALLBACKS
+    # =====================================================
+    if harminv and harminv_objects:
+
+        extra_run_functions = [
+            mp.after_time(
+                config.harminv_t0,
+                h
+            )
+            for _, h in harminv_objects
+        ]
+
+    else:
+
+        extra_run_functions = None
+
+    # =====================================================
+    # MAIN SIMULATION
+    # =====================================================
+    sim = collect_fields_with_output(
+        sim,
+        volumes=planes,
+        delta_t=config.sim_time_step,
+        until=config.sim_time,
+        start_time=0,
+        path=cache_dir,
+        calc_E_fields=calc_E,
+        calc_H_fields=calc_H,
+        calc_Dpwr=calc_DPWR,
+        extra_run_functions=extra_run_functions,
+    )
+
+    results = {}
+
+    # =====================================================
+    # TRL
+    # =====================================================
+    if TRL and TRL_monitors:
+
+        results["TRL"] = {}
+
+        trl_dir = os.path.join(cache_dir, "TRL")
+        os.makedirs(trl_dir, exist_ok=True)
+
+        for name, monitor in TRL_monitors.items():
+
+            flux = np.asarray(
+                mp.get_fluxes(monitor)
+            )
+
+            freqs = np.asarray(
+                mp.get_flux_freqs(monitor)
+            )
+
+            flux_data = sim.get_flux_data(
+                monitor
+            )
+
+            results["TRL"][name] = {
+                "flux": flux,
+                "freqs": freqs,
+                "flux_data": flux_data,
+            }
+
+            # save numpy data
+            np.savez(
+                os.path.join(
+                    trl_dir,
+                    f"{name}.npz"
+                ),
+                flux=flux,
+                freqs=freqs,
+            )
+
+            # save pickle data            
+            with open(
+                os.path.join(trl_dir, f"{name}_flux_data.pkl"),
+                "wb"
+            ) as f:
+                pickle.dump(flux_data, f)
+    # =====================================================
+    # SCATTERING
+    # =====================================================
+    if scattering and scattering_monitors:
+
+        results["scattering"] = {}
+
+        for i, monitor in enumerate(
+            scattering_monitors
+        ):
+
+            results["scattering"][f"face_{i}"] = {
+                "flux": np.asarray(
+                    mp.get_fluxes(monitor)
+                ),
+                "flux_data": sim.get_flux_data(
+                    monitor
+                )
+            }
+
+    # =====================================================
+    # DFT
+    # =====================================================
+    if dft_gap_spectrum and dft_monitors:
+
+        results["dft"] = {}
+
+        for name, monitor in dft_monitors.items():
+
+            results["dft"][name] = {}
+
+            for comp in [
+                ("Ex", mp.Ex),
+                ("Ey", mp.Ey),
+                ("Ez", mp.Ez),
+            ]:
+
+                cname, cfield = comp
+
+                results["dft"][name][cname] = np.array([
+                    sim.get_dft_array(
+                        monitor,
+                        cfield,
+                        i
+                    )
+                    for i in range(
+                        config.nfreq
+                    )
+                ])
+
+    # =====================================================
+    # HARMINV
+    # =====================================================
+    if harminv and harminv_objects:
+
+        results["harminv"] = []
+
+        for point, h in harminv_objects:
+
+            results["harminv"].append({
+                "point": point,
+                "harminv": h,
+            })
+
+    if mp.am_master():
+        print(f"Finished structure: {structure_name}")
+
+    # sim.reset_meep()
+
+    return results
+
+def compute_fields_2(
+    sim_empty=None,
+    sim_substrate=None,
+    sim_antenna=None,
+    volumes=None,
+    config=None,
+    calc_E=True,
+    calc_H=False,
+    calc_DPWR=False,
+    TRL=True,
+    TRL_X_size=None,
+    TRL_Y_size=None,
+    scattering=True,
+    dft_gap_spectrum=False,
+    harminv=False,
+    harminv_objects=None,
+):
+    """
+    Run all requested structures and collect raw data.
+
+    Returns
+    -------
+    dict
+        {
+            "empty": ...,
+            "substrate": ...,
+            "antenna": ...
+        }
+    """
+
+    planes = {
+        "xyplanar": volumes.volume["XY"],
+        "xyplanarTOP": volumes.volume["XY_TOP"],
+        "xzplanar": volumes.volume["XZ"],
+        "yzplanar": volumes.volume["YZ"],
+    }
+    
+    results = {}    
+    # ============================================================
+    # EMPTY
+    # ============================================================
+    empty_TRL = None
+    if sim_empty is not None:
+        if TRL is True:
+            # TRL (Transmitance-Reflectance-Loss)
+            empty_TRL = setup_TRL_monitors(
+                sim_empty,
+                config,
+                TRL_X_size,
+                TRL_Y_size,
+            )
+    
+        empty_planes = {
+            f"{name}-empty": vol
+            for name, vol in planes.items()
+        }
+
+        results["empty"] = run_structure(
+            sim=sim_empty,
+            structure_name="empty",
+            planes=empty_planes,
+            config=config,
+            calc_E=calc_E,
+            calc_H=calc_H,
+            calc_DPWR=calc_DPWR,
+            TRL=TRL,
+            TRL_monitors=empty_TRL,
+            scattering=scattering,
+            scattering_monitors=None,
+            dft_gap_spectrum=dft_gap_spectrum,
+            dft_monitors=None,
+            harminv=False,
+        )
+        empty_TRL = load_TRL_data(
+            os.path.join(
+                config.path_to_save,
+                "cache",
+                "empty",
+                "TRL"
+            )
+        )
+
+        refl_data_loaded = empty_TRL["refl"]["flux_data"]
+        refl_data_original = results["empty"]["TRL"]["refl"]["flux_data"]
+
+        print(type(refl_data_loaded))
+        print(type(refl_data_original))
+
+    # ============================================================
+    # SUBSTRATE
+    # ============================================================
+    substrate_TRL = None
+    if sim_substrate is not None:
+        if TRL is True:
+            # TRL (Transmitance-Reflectance-Loss)
+            substrate_TRL = setup_TRL_monitors(
+                sim_substrate,
+                config,
+                TRL_X_size,
+                TRL_Y_size,
+            )
+
+        results["substrate"] = run_structure(
+            sim=sim_substrate,
+            structure_name="substrate",
+            planes=planes,
+            config=config,
+            calc_E=calc_E,
+            calc_H=calc_H,
+            calc_DPWR=calc_DPWR,
+            TRL=TRL,
+            TRL_monitors=substrate_TRL,
+            scattering=scattering,
+            scattering_monitors=None,
+            dft_gap_spectrum=dft_gap_spectrum,
+            dft_monitors=None,
+            harminv=harminv,
+            harminv_objects=harminv_objects,
+        )
+
+    # ============================================================
+    # ANTENNA
+    # ============================================================
+    antenna_TRL = None 
+    if sim_antenna is not None:
+        if TRL is True:
+            # TRL (Transmitance-Reflectance-Loss)
+            antenna_TRL = setup_TRL_monitors(
+                sim_antenna,
+                config,
+                TRL_X_size,
+                TRL_Y_size,
+            )
+
+        results["antenna"] = run_structure(
+            sim=sim_antenna,
+            structure_name="antenna",
+            planes=planes,
+            config=config,
+            calc_E=calc_E,
+            calc_H=calc_H,
+            calc_DPWR=calc_DPWR,
+            TRL=TRL,
+            TRL_monitors=antenna_TRL,
+            scattering=scattering,
+            scattering_monitors=None,
+            dft_gap_spectrum=dft_gap_spectrum,
+            dft_monitors=None,
+            harminv=harminv,
+            harminv_objects=harminv_objects,
+        )
+
+        sim_antenna.load_minus_flux_data(
+                    antenna_TRL["refl"],
+                    refl_data_loaded
+                )
+
+    return results
+
+def setup_TRL_monitors(sim, config, TRL_X_size=None, TRL_Y_size=None):
+
+    if TRL_X_size is None:
+        TRL_X_size = config.src_size[0]
+
+    if TRL_Y_size is None:
+        TRL_Y_size = config.src_size[1]
+
+    refl_fr = mp.FluxRegion(
+        center=mp.Vector3(
+            0,
+            0,
+            config.z_reflection
+        ),
+        size=mp.Vector3(
+            TRL_X_size,
+            TRL_Y_size,
+            0
+        )
+    )
+
+    tran_fr = mp.FluxRegion(
+        center=mp.Vector3(
+            0,
+            0,
+            config.z_transmission
+        ),
+        size=mp.Vector3(
+            TRL_X_size,
+            TRL_Y_size,
+            0
+        )
+    )
+
+    return {
+        "refl": sim.add_flux(
+            config.frequency,
+            config.frequency_width,
+            config.nfreq,
+            refl_fr
+        ),
+        "tran": sim.add_flux(
+            config.frequency,
+            config.frequency_width,
+            config.nfreq,
+            tran_fr
+        ),
+    }
+
+def load_TRL_data(path):
+
+    results = {}
+
+    for name in ["refl", "tran"]:
+
+        npz = np.load(
+            os.path.join(path, f"{name}.npz")
+        )
+
+        with open(
+            os.path.join(path, f"{name}_flux_data.pkl"),
+            "rb"
+        ) as f:
+
+            flux_data = pickle.load(f)
+
+        results[name] = {
+            "flux": npz["flux"],
+            "freqs": npz["freqs"],
+            "flux_data": flux_data,
+        }
+
+    return results

@@ -23,9 +23,8 @@ class VolumeSet:
         - vis_volume (visualization)
     """
 
-    def __init__(self, cell_size, antenna=None, top_z=None, extra_vols_in_gap=False):
+    def __init__(self, cell_size, antenna=None, top_z=None):
 
-        self.extra = extra_vols_in_gap
         self.volume = {}
         self.vis_volume = {}
         self.bounds = {}
@@ -37,7 +36,6 @@ class VolumeSet:
         # =====================================================
         # PLANES FOR CALCULATIONS
         # =====================================================
-
         self.volume["XY"] = mp.Volume(
             center=mp.Vector3(0, 0, 0),
             size=mp.Vector3(cx, cy, 0.0)
@@ -65,77 +63,9 @@ class VolumeSet:
             size=mp.Vector3(cx, cy, 0.0)
         )
 
-        if extra_vols_in_gap:
-            # XY
-            self.volume["XY_5"] = mp.Volume(
-                center=mp.Vector3(0, 0, top_shift_z),
-                size=mp.Vector3(antenna.gap*2, antenna.width*2, 0.0)
-            )
-            self.volume["XY_4"] = mp.Volume(
-                center=mp.Vector3(0, 0, top_shift_z/4.0*3.0),
-                size=mp.Vector3(antenna.gap*2, antenna.width*2, 0.0)
-            )
-            self.volume["XY_3"] = mp.Volume(
-                center=mp.Vector3(0, 0, top_shift_z/4.0*2.0),
-                size=mp.Vector3(antenna.gap*2, antenna.width*2, 0.0)
-            )
-            self.volume["XY_2"] = mp.Volume(
-                center=mp.Vector3(0, 0, top_shift_z/4.0),
-                size=mp.Vector3(antenna.gap*2, antenna.width*2, 0.0)
-            )
-            self.volume["XY_1"] = mp.Volume(
-                center=mp.Vector3(0, 0, 0),
-                size=mp.Vector3(antenna.gap*2, antenna.width*2, 0.0)
-            )
-
-            # XZ
-            self.volume["XZ_5"] = mp.Volume(
-                center=mp.Vector3(0, antenna.width, 0),
-                size=mp.Vector3(antenna.gap*2, 0.0, antenna.thickness*2)
-            )
-            self.volume["XZ_4"] = mp.Volume(
-                center=mp.Vector3(0, antenna.width/4.0*3.0, 0),
-                size=mp.Vector3(antenna.gap*2, 0.0, antenna.thickness*2)
-            )
-            self.volume["XZ_3"] = mp.Volume(
-                center=mp.Vector3(0, antenna.width/4.0*2.0, 0),
-                size=mp.Vector3(antenna.gap*2, 0.0, antenna.thickness*2)
-            )
-            self.volume["XZ_2"] = mp.Volume(
-                center=mp.Vector3(0, antenna.width/4.0, 0),
-                size=mp.Vector3(antenna.gap*2, 0.0, antenna.thickness*2)
-            )
-            self.volume["XZ_1"] = mp.Volume(
-                center=mp.Vector3(0, 0, 0),
-                size=mp.Vector3(antenna.gap*2, 0.0, antenna.thickness*2)
-            )
-
-            # YZ
-            self.volume["YZ_5"] = mp.Volume(
-                center=mp.Vector3(antenna.gap, 0, 0),
-                size=mp.Vector3(0.0, antenna.width*2, antenna.thickness*2)
-            )
-            self.volume["YZ_4"] = mp.Volume(
-                center=mp.Vector3(antenna.gap/4.0*3.0, 0, 0),
-                size=mp.Vector3(0.0, antenna.width*2, antenna.thickness*2)
-            )
-            self.volume["YZ_3"] = mp.Volume(
-                center=mp.Vector3(antenna.gap/4.0*2.0, 0, 0),
-                size=mp.Vector3(0.0, antenna.width*2, antenna.thickness*2)
-            )
-            self.volume["YZ_2"] = mp.Volume(
-                center=mp.Vector3(antenna.gap/4.0, 0, 0),
-                size=mp.Vector3(0.0, antenna.width*2, antenna.thickness*2)
-            )
-            self.volume["YZ_1"] = mp.Volume(
-                center=mp.Vector3(0, 0, 0),
-                size=mp.Vector3(0.0, antenna.width*2, antenna.thickness*2)
-            )
-
         # =====================================================
         # VISUALIZATION PLANES
         # =====================================================
-
         self.vis_volume["XY"] = mp.Volume(
             center=mp.Vector3(0, 0, 0),
             size=mp.Vector3(cx, cy, 0.0)
@@ -159,7 +89,6 @@ class VolumeSet:
         # =====================================================
         # PLANES BOUNDS
         # =====================================================
-        
         for name, vol in self.volume.items():
             self.bounds[name] = compute_bounds(vol)
 
@@ -185,7 +114,6 @@ class VolumeSetROI:
         antenna=None,
         padding_xy=50.0,
         padding_z=20.0,
-        extra_vols_in_gap=False
     ):
 
         # =====================================================
@@ -211,7 +139,6 @@ class VolumeSetROI:
         # =====================================================
         # INIT
         # =====================================================
-        self.extra = extra_vols_in_gap
         self.volume = {}
         self.vis_volume = {}
         self.bounds = {}
@@ -237,7 +164,6 @@ class VolumeSetROI:
         # =====================================================
         # PLANES FOR CALCULATIONS (ROI LIMITED)
         # =====================================================
-
         self.volume["XY"] = mp.Volume(
             center=roi_center,
             size=mp.Vector3(roi_size.x, roi_size.y, 0.0)
@@ -256,7 +182,6 @@ class VolumeSetROI:
         # =====================================================
         # TOP PLANE (antenna surface)
         # =====================================================
-
         if hasattr(antenna, "thickness"):
             top_z = cz + antenna.thickness / 2.0
         else:
@@ -268,45 +193,8 @@ class VolumeSetROI:
         )
 
         # =====================================================
-        # EXTRA GAP VOLUMES (LOCALIZED)
-        # =====================================================
-
-        if extra_vols_in_gap:
-
-            if not hasattr(antenna, "gap"):
-                raise ValueError(
-                    "VolumeSetROI ERROR: extra_vols_in_gap=True but antenna has no 'gap' attribute."
-                )
-
-            gap = antenna.gap
-            width = by
-            thickness = getattr(antenna, "thickness", bz)
-
-            # XY slices through gap
-            for i, frac in enumerate([0.0, 0.25, 0.5, 0.75, 1.0], start=1):
-                self.volume[f"XY_{i}"] = mp.Volume(
-                    center=mp.Vector3(cx, cy, cz + frac * thickness / 2),
-                    size=mp.Vector3(gap * 2, width * 0.5, 0.0)
-                )
-
-            # XZ slices
-            for i, frac in enumerate([0.0, 0.25, 0.5, 0.75, 1.0], start=1):
-                self.volume[f"XZ_{i}"] = mp.Volume(
-                    center=mp.Vector3(cx, cy + frac * width / 2, cz),
-                    size=mp.Vector3(gap * 2, 0.0, thickness * 2)
-                )
-
-            # YZ slices
-            for i, frac in enumerate([0.0, 0.25, 0.5, 0.75, 1.0], start=1):
-                self.volume[f"YZ_{i}"] = mp.Volume(
-                    center=mp.Vector3(cx + frac * gap, cy, cz),
-                    size=mp.Vector3(0.0, width * 0.5, thickness * 2)
-                )
-
-        # =====================================================
         # VISUALIZATION (FULL CELL)
         # =====================================================
-
         self.vis_volume["XY"] = mp.Volume(
             center=mp.Vector3(0, 0, 0),
             size=mp.Vector3(cell_size.x, cell_size.y, 0.0)
@@ -330,6 +218,5 @@ class VolumeSetROI:
         # =====================================================
         # PLANES BOUNDS
         # =====================================================
-        
         for name, vol in self.volume.items():
             self.bounds[name] = compute_bounds(vol)

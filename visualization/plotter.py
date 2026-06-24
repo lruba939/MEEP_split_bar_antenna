@@ -1153,10 +1153,21 @@ def save_2D_plot(sim, volume, save_name="2Dplot.png", IMG_SAVE=True, path_to_sav
                 plt.text(-config.cell_size[0]/2.1, config.z_transmission*0.9, 'T', color='red', fontsize=12)
 
         if IMG_SAVE:
-            plt.savefig(os.path.join(path_to_save, save_name), dpi=300, bbox_inches="tight", format="png")
+            save_dir = path_to_save
+            if path_to_save is not None:
+                save_dir = os.path.join(
+                    path_to_save,
+                    "cell_visualization"
+                )
+                os.makedirs(save_dir, exist_ok=True)
+                
+            plt.savefig(
+                os.path.join(save_dir, save_name),
+                dpi=300,
+                bbox_inches="tight",
+                format="png"
+            )
         if IMG_CLOSE:
-            # plt.show(block=False)
-            # plt.pause(2)
             plt.close("all")
         else:
             plt.show()
