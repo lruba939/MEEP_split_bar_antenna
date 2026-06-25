@@ -587,9 +587,9 @@ def compute_fields(
     fluxes=True,
     fluxes_X_size=None,
     fluxes_Y_size=None,
-    scattering=True,
-    dft_gap_spectrum=False,
+    scattering=False,
     scattering_antenna=None,
+    dft_gap_spectrum=False,
     harminv=False,
 ):
     """
@@ -1963,7 +1963,6 @@ def run_structure(
 
         extra_run_functions = None
 
-
     if TRL_reference is not None:
         sim.load_minus_flux_data(
             TRL_monitors["monitors"]["refl"],
@@ -1992,7 +1991,10 @@ def run_structure(
     # =====================================================
     if TRL and TRL_monitors:
 
-        results["TRL"] = {}
+        results["TRL"] = {
+            "monitors": {},
+            "metadata": TRL_monitors["metadata"],
+        }
 
         trl_dir = os.path.join(cache_dir, "TRL")
         os.makedirs(trl_dir, exist_ok=True)
@@ -2011,7 +2013,7 @@ def run_structure(
                 monitor
             )
 
-            results["TRL"][name] = {
+            results["TRL"]["monitors"][name] = {
                 "flux": flux,
                 "freqs": freqs,
                 "flux_data": flux_data,
@@ -2106,6 +2108,7 @@ def run_structure(
 
 def compute_fields_2(
     sim_empty=None,
+    empty_from_cache=None,
     sim_substrate=None,
     sim_antenna=None,
     volumes=None,
@@ -2116,7 +2119,7 @@ def compute_fields_2(
     TRL=True,
     TRL_X_size=None,
     TRL_Y_size=None,
-    scattering=True,
+    scattering=False,
     dft_gap_spectrum=False,
     harminv=False,
     harminv_objects=None,
@@ -2145,11 +2148,17 @@ def compute_fields_2(
     # ============================================================
     # EMPTY
     # ============================================================
-    empty_TRL = None
-    if sim_empty is not None:
-        if TRL is True:
-            # TRL (Transmitance-Reflectance-Loss)
-            empty_TRL = setup_TRL_monitors(
+    empty_cache = None
+    
+    if empty_from_cache is not None:    
+        results["empty"] = load_cache(path=empty_from_cache, TRL=TRL, scattering=scattering, dft=dft_gap_spectrum, harminv=harminv)
+        
+    elif sim_empty is not None:
+    
+        empty_TRL_monitors = None
+    
+        if TRL:
+            empty_TRL_monitors = setup_TRL_monitors(
                 sim_empty,
                 config,
                 TRL_X_size,
@@ -2160,7 +2169,7 @@ def compute_fields_2(
             f"{name}-empty": vol
             for name, vol in planes.items()
         }
-
+    
         results["empty"] = run_structure(
             sim=sim_empty,
             structure_name="empty",
@@ -2170,22 +2179,14 @@ def compute_fields_2(
             calc_H=calc_H,
             calc_DPWR=calc_DPWR,
             TRL=TRL,
-            TRL_monitors=empty_TRL,
+            TRL_monitors=empty_TRL_monitors,
             scattering=scattering,
             scattering_monitors=None,
             dft_gap_spectrum=dft_gap_spectrum,
             dft_monitors=None,
             harminv=False,
         )
-        empty_TRL = load_TRL_data(
-            os.path.join(
-                config.path_to_save,
-                "cache",
-                "empty",
-                "TRL"
-            )
-        )
-
+    
     # ============================================================
     # SUBSTRATE
     # ============================================================
@@ -2193,7 +2194,7 @@ def compute_fields_2(
     if sim_substrate is not None:
         if TRL is True:
             # TRL (Transmitance-Reflectance-Loss)
-            substrate_TRL = setup_TRL_monitors(
+            substrate_TRL_monitors = setup_TRL_monitors(
                 sim_substrate,
                 config,
                 TRL_X_size,
@@ -2209,8 +2210,8 @@ def compute_fields_2(
             calc_H=calc_H,
             calc_DPWR=calc_DPWR,
             TRL=TRL,
-            TRL_monitors=substrate_TRL,
-            TRL_reference=empty_TRL,
+            TRL_monitors=substrate_TRL_monitors,
+            TRL_reference=results["empty"]["TRL"],
             scattering=scattering,
             scattering_monitors=None,
             dft_gap_spectrum=dft_gap_spectrum,
@@ -2226,7 +2227,7 @@ def compute_fields_2(
     if sim_antenna is not None:
         if TRL is True:
             # TRL (Transmitance-Reflectance-Loss)
-            antenna_TRL = setup_TRL_monitors(
+            antenna_TRL_monitors = setup_TRL_monitors(
                 sim_antenna,
                 config,
                 TRL_X_size,
@@ -2242,8 +2243,8 @@ def compute_fields_2(
             calc_H=calc_H,
             calc_DPWR=calc_DPWR,
             TRL=TRL,
-            TRL_monitors=antenna_TRL,
-            TRL_reference=empty_TRL,
+            TRL_monitors=antenna_TRL_monitors,
+            TRL_reference=results["empty"]["TRL"],
             scattering=scattering,
             scattering_monitors=None,
             dft_gap_spectrum=dft_gap_spectrum,
@@ -2310,20 +2311,25 @@ def setup_TRL_monitors(sim, config, TRL_X_size=None, TRL_Y_size=None):
         }
     }
 
-def load_TRL_data(path):
+def load_TRL(path):
+    """
+    Load cached TRL data.
+    """
     results = {
         "monitors": {},
-        "metadata": None,
     }
 
     for name in ["refl", "tran"]:
+
         npz = np.load(
             os.path.join(path, f"{name}.npz")
         )
+
         with open(
             os.path.join(path, f"{name}_flux_data.pkl"),
             "rb"
         ) as f:
+
             flux_data = pickle.load(f)
 
         results["monitors"][name] = {
@@ -2423,3 +2429,147 @@ def save_cache_metadata(
             f,
             indent=4,
         )
+
+def load_metadata(path):
+    """
+    Load cache metadata.
+    """
+
+    with open(
+        os.path.join(path, "metadata.json"),
+        "r",
+        encoding="utf-8",
+    ) as f:
+
+        return json.load(f)
+
+def load_cache(
+    path,
+    TRL=False,
+    scattering=False,
+    dft=False,
+    harminv=False,
+):
+    """
+    Load cached simulation data.
+
+    Parameters
+    ----------
+    path : str
+        Path to structure cache directory, e.g.
+        ".../cache/empty"
+
+    TRL : bool
+        Load TRL cache.
+
+    scattering : bool
+        Load scattering cache.
+
+    dft : bool
+        Load DFT cache.
+
+    harminv : bool
+        Load Harminv cache.
+
+    Returns
+    -------
+    dict
+        Loaded cache.
+    """
+
+    # =====================================================
+    # CACHE DIRECTORY
+    # =====================================================
+
+    if not os.path.isdir(path):
+        raise FileNotFoundError(
+            f"Cache directory does not exist:\n{path}"
+        )
+
+    cache = {
+        "metadata": None,
+        "TRL": None,
+        "SCATTERING": None,
+        "DFT": None,
+        "HARMINV": None,
+    }
+
+    # =====================================================
+    # METADATA (required)
+    # =====================================================
+
+    metadata_path = os.path.join(path, "metadata.json")
+
+    if not os.path.isfile(metadata_path):
+        raise FileNotFoundError(
+            f"metadata.json not found:\n{metadata_path}"
+        )
+
+    cache["metadata"] = load_metadata(path)
+
+    # =====================================================
+    # TRL
+    # =====================================================
+
+    if TRL:
+
+        trl_path = os.path.join(path, "TRL")
+
+        if not os.path.isdir(trl_path):
+            raise FileNotFoundError(
+                f"TRL cache not found:\n{trl_path}"
+            )
+
+        cache["TRL"] = load_TRL(trl_path)
+
+    # =====================================================
+    # SCATTERING
+    # =====================================================
+
+    if scattering:
+
+        scat_path = os.path.join(path, "SCATTERING")
+
+        if not os.path.isdir(scat_path):
+            raise FileNotFoundError(
+                f"Scattering cache not found:\n{scat_path}"
+            )
+
+        # cache["SCATTERING"] = load_scattering(scat_path)
+
+    # =====================================================
+    # DFT
+    # =====================================================
+
+    if dft:
+
+        dft_path = os.path.join(path, "DFT")
+
+        if not os.path.isdir(dft_path):
+            raise FileNotFoundError(
+                f"DFT cache not found:\n{dft_path}"
+            )
+
+        # cache["DFT"] = load_DFT(dft_path)
+
+    # =====================================================
+    # HARMINV
+    # =====================================================
+
+    if harminv:
+
+        harminv_path = os.path.join(path, "HARMINV")
+
+        if not os.path.isdir(harminv_path):
+            raise FileNotFoundError(
+                f"Harminv cache not found:\n{harminv_path}"
+            )
+
+        # cache["HARMINV"] = load_harminv(harminv_path)
+
+    print("\n=======================================")
+    print("CACHE WAS LOADED SUCCESSFULLY")
+    print(f"Path: {path}")
+    print("=======================================\n")
+
+    return cache
