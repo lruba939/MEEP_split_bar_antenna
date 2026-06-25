@@ -4,6 +4,7 @@ import numpy as np
 import os
 from utils.logger import append_time_to_file
 import pickle
+import json
 
 from visualization.plotter import *
 # !!!!!!!!! ---> from main.src.simulation import * # CANT IMPORT DUE TO CIRCULAR DEPENDENCY
@@ -1898,6 +1899,7 @@ def run_structure(
     calc_DPWR=False,
     TRL=False,
     TRL_monitors=None,
+    TRL_reference=None,
     scattering=False,
     scattering_monitors=None,
     dft_gap_spectrum=False,
@@ -1928,6 +1930,15 @@ def run_structure(
 
     os.makedirs(cache_dir, exist_ok=True)
 
+    save_cache_metadata(
+        cache_dir=cache_dir,
+        config=config,
+        structure_name=structure_name,
+        TRL_monitors=TRL_monitors,
+        scattering_monitors=scattering_monitors,
+        dft_monitors=dft_monitors,
+    )
+
     if mp.am_master():
         print(f"Running structure: {structure_name}")
         append_time_to_file(
@@ -1952,6 +1963,12 @@ def run_structure(
 
         extra_run_functions = None
 
+
+    if TRL_reference is not None:
+        sim.load_minus_flux_data(
+            TRL_monitors["monitors"]["refl"],
+            TRL_reference["monitors"]["refl"]["flux_data"],
+        )
     # =====================================================
     # MAIN SIMULATION
     # =====================================================
@@ -1980,7 +1997,7 @@ def run_structure(
         trl_dir = os.path.join(cache_dir, "TRL")
         os.makedirs(trl_dir, exist_ok=True)
 
-        for name, monitor in TRL_monitors.items():
+        for name, monitor in TRL_monitors["monitors"].items():
 
             flux = np.asarray(
                 mp.get_fluxes(monitor)
@@ -2083,7 +2100,7 @@ def run_structure(
     if mp.am_master():
         print(f"Finished structure: {structure_name}")
 
-    # sim.reset_meep()
+    sim.reset_meep()
 
     return results
 
@@ -2169,12 +2186,6 @@ def compute_fields_2(
             )
         )
 
-        refl_data_loaded = empty_TRL["refl"]["flux_data"]
-        refl_data_original = results["empty"]["TRL"]["refl"]["flux_data"]
-
-        print(type(refl_data_loaded))
-        print(type(refl_data_original))
-
     # ============================================================
     # SUBSTRATE
     # ============================================================
@@ -2199,6 +2210,7 @@ def compute_fields_2(
             calc_DPWR=calc_DPWR,
             TRL=TRL,
             TRL_monitors=substrate_TRL,
+            TRL_reference=empty_TRL,
             scattering=scattering,
             scattering_monitors=None,
             dft_gap_spectrum=dft_gap_spectrum,
@@ -2231,6 +2243,7 @@ def compute_fields_2(
             calc_DPWR=calc_DPWR,
             TRL=TRL,
             TRL_monitors=antenna_TRL,
+            TRL_reference=empty_TRL,
             scattering=scattering,
             scattering_monitors=None,
             dft_gap_spectrum=dft_gap_spectrum,
@@ -2238,11 +2251,6 @@ def compute_fields_2(
             harminv=harminv,
             harminv_objects=harminv_objects,
         )
-
-        sim_antenna.load_minus_flux_data(
-                    antenna_TRL["refl"],
-                    refl_data_loaded
-                )
 
     return results
 
@@ -2279,43 +2287,139 @@ def setup_TRL_monitors(sim, config, TRL_X_size=None, TRL_Y_size=None):
             0
         )
     )
-
     return {
-        "refl": sim.add_flux(
-            config.frequency,
-            config.frequency_width,
-            config.nfreq,
-            refl_fr
-        ),
-        "tran": sim.add_flux(
-            config.frequency,
-            config.frequency_width,
-            config.nfreq,
-            tran_fr
-        ),
+        "monitors": {
+            "refl": sim.add_flux(
+                config.frequency,
+                config.frequency_width,
+                config.nfreq,
+                refl_fr
+            ),
+            "tran": sim.add_flux(
+                config.frequency,
+                config.frequency_width,
+                config.nfreq,
+                tran_fr
+            ),
+        },
+        "metadata": {
+            "x_size": TRL_X_size,
+            "y_size": TRL_Y_size,
+            "z_reflection": config.z_reflection,
+            "z_transmission": config.z_transmission,
+        }
     }
 
 def load_TRL_data(path):
-
-    results = {}
+    results = {
+        "monitors": {},
+        "metadata": None,
+    }
 
     for name in ["refl", "tran"]:
-
         npz = np.load(
             os.path.join(path, f"{name}.npz")
         )
-
         with open(
             os.path.join(path, f"{name}_flux_data.pkl"),
             "rb"
         ) as f:
-
             flux_data = pickle.load(f)
 
-        results[name] = {
+        results["monitors"][name] = {
             "flux": npz["flux"],
             "freqs": npz["freqs"],
             "flux_data": flux_data,
         }
 
     return results
+    
+def save_cache_metadata(
+            cache_dir,
+            config,
+            structure_name,
+            TRL_monitors=None,
+            scattering_monitors=None,
+            dft_monitors=None,
+        ):
+    """
+    Save simulation metadata required for cache validation.
+
+    Parameters
+    ----------
+    cache_dir : str
+        Path to cache/<structure_name>.
+
+    config : object
+        Simulation configuration.
+
+    structure_name : str
+        Name of simulated structure ("empty", "substrate", "antenna", ...).
+
+    TRL_monitors : dict, optional
+        Dictionary returned by setup_TRL_monitors().
+
+    scattering_monitors : dict, optional
+        Reserved for future use.
+
+    dft_monitors : dict, optional
+        Reserved for future use.
+    """
+
+    def r(x):
+        return round(float(x), 10)
+
+    metadata = {
+        # =====================================================
+        # CACHE
+        # =====================================================
+        "structure": structure_name,
+
+        # =====================================================
+        # COMPUTATIONAL CELL
+        # =====================================================
+        "cell_size": [r(v) for v in config.cell_size],
+        "resolution": config.resolution,
+
+        # =====================================================
+        # SOURCE
+        # =====================================================
+        "frequency": r(config.frequency),
+        "frequency_width": r(config.frequency_width),
+        "nfreq": config.nfreq,
+    }
+
+    # =====================================================
+    # TRL
+    # =====================================================
+    if TRL_monitors is not None:
+        metadata["TRL"] = {
+            "x_size": r(TRL_monitors["metadata"]["x_size"]),
+            "y_size": r(TRL_monitors["metadata"]["y_size"]),
+            "z_reflection": r(TRL_monitors["metadata"]["z_reflection"]),
+            "z_transmission": r(TRL_monitors["metadata"]["z_transmission"]),
+        }
+
+    # =====================================================
+    # SCATTERING (future)
+    # =====================================================
+    if scattering_monitors is not None:
+        metadata["SCATTERING"] = scattering_monitors["metadata"]
+
+    # =====================================================
+    # DFT (future)
+    # =====================================================
+    if dft_monitors is not None:
+        metadata["DFT"] = dft_monitors["metadata"]
+
+    with open(
+        os.path.join(cache_dir, "metadata.json"),
+        "w",
+        encoding="utf-8",
+    ) as f:
+
+        json.dump(
+            metadata,
+            f,
+            indent=4,
+        )
