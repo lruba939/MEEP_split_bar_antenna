@@ -2152,6 +2152,16 @@ def compute_fields_2(
     
     if empty_from_cache is not None:    
         results["empty"] = load_cache(path=empty_from_cache, TRL=TRL, scattering=scattering, dft=dft_gap_spectrum, harminv=harminv)
+        validate_cache(
+            metadata=results["empty"]["metadata"],
+            config=config,
+            TRL=TRL,
+            TRL_X_size=TRL_X_size,
+            TRL_Y_size=TRL_Y_size,
+            scattering=scattering,
+            dft=dft_gap_spectrum,
+            harminv=harminv,
+        )
         
     elif sim_empty is not None:
     
@@ -2190,7 +2200,6 @@ def compute_fields_2(
     # ============================================================
     # SUBSTRATE
     # ============================================================
-    substrate_TRL = None
     if sim_substrate is not None:
         if TRL is True:
             # TRL (Transmitance-Reflectance-Loss)
@@ -2200,6 +2209,8 @@ def compute_fields_2(
                 TRL_X_size,
                 TRL_Y_size,
             )
+        else:
+            substrate_TRL_monitors = None
 
         results["substrate"] = run_structure(
             sim=sim_substrate,
@@ -2223,7 +2234,6 @@ def compute_fields_2(
     # ============================================================
     # ANTENNA
     # ============================================================
-    antenna_TRL = None 
     if sim_antenna is not None:
         if TRL is True:
             # TRL (Transmitance-Reflectance-Loss)
@@ -2233,6 +2243,8 @@ def compute_fields_2(
                 TRL_X_size,
                 TRL_Y_size,
             )
+        else:
+            antenna_TRL_monitors = None
 
         results["antenna"] = run_structure(
             sim=sim_antenna,
@@ -2252,6 +2264,25 @@ def compute_fields_2(
             harminv=harminv,
             harminv_objects=harminv_objects,
         )
+
+    # ============================================================
+    # ANALYSIS
+    # ============================================================
+    if TRL is True:
+        if sim_substrate is not None:
+            TRL_substrate = compute_TRL(
+                reference=results["empty"]["TRL"],
+                structure=results["substrate"]["TRL"],
+                save_path=config.path_to_save,
+                save_name="TRL_substrate",
+            )
+        if sim_antenna is not None:
+            TRL_antenna = compute_TRL(
+                reference=results["empty"]["TRL"],
+                structure=results["antenna"]["TRL"],
+                save_path=config.path_to_save,
+                save_name="TRL_antenna",
+            )
 
     return results
 
@@ -2338,6 +2369,162 @@ def load_TRL(path):
             "flux_data": flux_data,
         }
 
+    return results
+
+def compute_TRL(
+    reference,
+    structure,
+    save_path=None,
+    save_name="TRL",
+):
+    """
+    Compute reflection, transmission and loss spectra.
+
+    Parameters
+    ----------
+    reference : dict
+        Reference TRL cache, usually empty structure.
+
+    structure : dict
+        Structure TRL cache.
+
+    save_path : str or None
+        Output directory.
+
+    save_name : str
+        Prefix for saved files.
+
+    Returns
+    -------
+    dict
+        {
+            "wavelength": ...,
+            "R": ...,
+            "T": ...,
+            "L": ...,
+        }
+    """
+
+    if not mp.am_master():
+        return
+
+    # =====================================================
+    # LOAD DATA
+    # =====================================================
+
+    incident_flux = np.asarray(
+        reference["monitors"]["tran"]["flux"]
+    )
+
+    refl_flux = np.asarray(
+        structure["monitors"]["refl"]["flux"]
+    )
+
+    tran_flux = np.asarray(
+        structure["monitors"]["tran"]["flux"]
+    )
+
+    flux_freqs = np.asarray(
+        structure["monitors"]["tran"]["freqs"]
+    )
+
+    # =====================================================
+    # WAVELENGTH
+    # =====================================================
+
+    wavelength = 1.0 / flux_freqs
+
+    # =====================================================
+    # R T L
+    # =====================================================
+
+    R = -refl_flux / incident_flux
+    T = tran_flux / incident_flux
+    L = 1.0 - R - T
+
+    results = {
+        "frequency": flux_freqs,
+        "wavelength": wavelength,
+        "R": R,
+        "T": T,
+        "L": L,
+    }
+
+    # =====================================================
+    # SAVE
+    # =====================================================
+
+    if save_path is not None:
+
+        trl_dir = os.path.join(
+            save_path,
+            "TRL",
+        )
+
+        os.makedirs(
+            trl_dir,
+            exist_ok=True,
+        )
+
+        data = np.column_stack(
+            [
+                flux_freqs,
+                wavelength,
+                R,
+                T,
+                L,
+            ]
+        )
+
+        np.savetxt(
+            os.path.join(
+                trl_dir,
+                f"{save_name}.txt",
+            ),
+            data,
+            header="frequency wavelength R T L",
+        )
+
+        np.savez(
+            os.path.join(
+                trl_dir,
+                f"{save_name}.npz",
+            ),
+            frequency=flux_freqs,
+            wavelength=wavelength,
+            R=R,
+            T=T,
+            L=L,
+        )
+
+        multi_line_plotter_same_axes(
+            xdata_list=[wavelength, wavelength, wavelength],
+            ydata_list=[R,T,L],
+            labels=["R","T","L"],
+            colors=["blue","red","green"],
+            linestyles=["-","--","-."],
+            xlabel="Wavelength [μm]",
+            ylabel="Fraction",
+            title=f"{save_name} vs wavelength",
+            legend=True,
+            save_path=trl_dir,
+            save_name=f"{save_name}_lambda.png",
+        )
+        
+        multi_line_plotter_same_axes(
+            xdata_list=[flux_freqs,flux_freqs,flux_freqs],
+            ydata_list=[R,T,L],
+            labels=["R","T","L"],
+            colors=["blue","red","green"],
+            linestyles=["-","--","-."],
+            xlabel="Frequency [1/μm]",
+            ylabel="Fraction",
+            title=f"{save_name} vs frequency",
+            legend=True,
+            save_path=trl_dir,
+            save_name=f"{save_name}_frequency.png",
+        )
+        
     return results
     
 def save_cache_metadata(
@@ -2573,3 +2760,153 @@ def load_cache(
     print("=======================================\n")
 
     return cache
+
+def validate_cache(
+    metadata,
+    config,
+    TRL=False,
+    TRL_X_size=None,
+    TRL_Y_size=None,
+    scattering=False,
+    dft=False,
+    harminv=False,
+):
+    """
+    Validate cache metadata against current simulation config.
+
+    Parameters
+    ----------
+    metadata : dict
+        Cache metadata loaded from metadata.json.
+
+    config : SimulationConfig
+        Current simulation configuration.
+
+    Raises
+    ------
+    ValueError
+        If cache is incompatible.
+    """
+
+    atol = 1e-12
+
+    # =====================================================
+    # CELL SIZE
+    # =====================================================
+    if not np.allclose(
+        metadata["cell_size"],
+        config.cell_size,
+        atol=atol,
+    ):
+        raise ValueError(
+            "Cache validation failed:\n"
+            f"cell_size mismatch\n"
+            f"cache   : {metadata['cell_size']}\n"
+            f"current : {list(config.cell_size)}"
+        )
+
+    # =====================================================
+    # RESOLUTION
+    # =====================================================
+    if metadata["resolution"] != config.resolution:
+        raise ValueError(
+            "Cache validation failed:\n"
+            f"resolution mismatch\n"
+            f"cache   : {metadata['resolution']}\n"
+            f"current : {config.resolution}"
+        )
+
+    # =====================================================
+    # FREQUENCY
+    # =====================================================
+    if not np.isclose(
+        metadata["frequency"],
+        config.frequency,
+        atol=atol,
+    ):
+        raise ValueError(
+            "Cache validation failed:\n"
+            f"frequency mismatch\n"
+            f"cache   : {metadata['frequency']}\n"
+            f"current : {config.frequency}"
+        )
+
+    # =====================================================
+    # FREQUENCY WIDTH
+    # =====================================================
+    if not np.isclose(
+        metadata["frequency_width"],
+        config.frequency_width,
+        atol=atol,
+    ):
+        raise ValueError(
+            "Cache validation failed:\n"
+            f"frequency_width mismatch\n"
+            f"cache   : {metadata['frequency_width']}\n"
+            f"current : {config.frequency_width}"
+        )
+
+    # =====================================================
+    # NFREQ
+    # =====================================================
+    if metadata["nfreq"] != config.nfreq:
+        raise ValueError(
+            "Cache validation failed:\n"
+            f"nfreq mismatch\n"
+            f"cache   : {metadata['nfreq']}\n"
+            f"current : {config.nfreq}"
+        )
+
+    # =====================================================
+    # TRL
+    # =====================================================
+    if TRL:
+        if TRL_X_size is None:
+            TRL_X_size = config.src_size[0]
+        
+        if TRL_Y_size is None:
+            TRL_Y_size = config.src_size[1]
+
+        if "TRL" not in metadata:
+            raise ValueError(
+                "Cache validation failed:\n"
+                "TRL metadata not found."
+            )
+
+        trl = metadata["TRL"]
+
+        checks = {
+            "x_size": TRL_X_size,
+            "y_size": TRL_Y_size,
+            "z_reflection": config.z_reflection,
+            "z_transmission": config.z_transmission,
+        }
+
+        for key, current in checks.items():
+
+            if not np.isclose(
+                trl[key],
+                current,
+                atol=1e-12,
+            ):
+                raise ValueError(
+                    "Cache validation failed:\n"
+                    f"TRL {key} mismatch\n"
+                    f"cache   : {trl[key]}\n"
+                    f"current : {current}"
+                )
+    # =====================================================
+    # FUTURE MODULES
+    # =====================================================
+    if scattering:
+        pass
+
+    if dft:
+        pass
+
+    if harminv:
+        pass
+
+    print("\n=======================================")
+    print("CACHE VALIDATION PASSED")
+    print("=======================================\n")
