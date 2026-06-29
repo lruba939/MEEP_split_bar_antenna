@@ -9,6 +9,8 @@ from visualization.plotter import *
 from utils.logger import append_time_to_file
 from utils.simulation.cache import *
 from utils.simulation.trl import *
+from utils.simulation.scattering import *
+# from utils.simulation.trl import *
 
 # !!!!!!!!! ---> from main.src.simulation import * # CANT IMPORT DUE TO CIRCULAR DEPENDENCY
 
@@ -578,6 +580,7 @@ def analyze_roi_from_h5_physical(
 
     return frame_mean, frame_max
 
+##############################################
 def compute_fields(
     sim_antenna,
     sim_empty,
@@ -595,489 +598,509 @@ def compute_fields(
     dft_gap_spectrum=False,
     harminv=False,
 ):
-    """
-    Run field simulations and compute enhancement maps.
+    pass
 
-    Parameters
-    ----------
-    mode : str
-        "WITH_ANTENNA", "EMPTY", "BOTH", "ENH_ONLY" or "WITH_EMPTY_CACHE"
 
-    calc_E : bool
-        Whether to calculate E-field enhancement.
+# def compute_fields(
+#     sim_antenna,
+#     sim_empty,
+#     volumes,
+#     config,
+#     mode="BOTH",
+#     calc_E=True,
+#     calc_H=False,
+#     calc_DPWR=False,
+#     fluxes=True,
+#     fluxes_X_size=None,
+#     fluxes_Y_size=None,
+#     scattering=False,
+#     scattering_antenna=None,
+#     dft_gap_spectrum=False,
+#     harminv=False,
+# ):
+#     """
+#     Run field simulations and compute enhancement maps.
 
-    calc_H : bool
-        Whether to calculate H-field enhancement.
+#     Parameters
+#     ----------
+#     mode : str
+#         "WITH_ANTENNA", "EMPTY", "BOTH", "ENH_ONLY" or "WITH_EMPTY_CACHE"
 
-    calc_DPWR : bool
-        Whether to calculate power density fields.
-    """
+#     calc_E : bool
+#         Whether to calculate E-field enhancement.
 
-    valid_modes = ["WITH_ANTENNA", "EMPTY", "BOTH", "ENH_ONLY", "WITH_EMPTY_CACHE"]
+#     calc_H : bool
+#         Whether to calculate H-field enhancement.
 
-    if mode not in valid_modes:
-        raise ValueError(f"mode must be one of {valid_modes}")
+#     calc_DPWR : bool
+#         Whether to calculate power density fields.
+#     """
 
-    # ============================================================
-    # Plane configuration
-    # ============================================================
-    planes = {
-        "xyplanar": volumes.volume["XY"],
-        "xyplanarTOP": volumes.volume["XY_TOP"],
-        "xzplanar": volumes.volume["XZ"],
-        "yzplanar": volumes.volume["YZ"],
-    }
+#     valid_modes = ["WITH_ANTENNA", "EMPTY", "BOTH", "ENH_ONLY", "WITH_EMPTY_CACHE"]
 
-    fcen = config.frequency
-    df = config.frequency_width
-    nfreq = config.nfreq
-    # ============================================================
-    # FLUX MONITORS
-    # ============================================================
-    if fluxes:
-        if fluxes_X_size is None:
-            fluxes_X_size = config.src_size[0]
-        if fluxes_Y_size is None:
-            fluxes_Y_size = config.src_size[1]
+#     if mode not in valid_modes:
+#         raise ValueError(f"mode must be one of {valid_modes}")
+
+#     # ============================================================
+#     # Plane configuration
+#     # ============================================================
+#     planes = {
+#         "xyplanar": volumes.volume["XY"],
+#         "xyplanarTOP": volumes.volume["XY_TOP"],
+#         "xzplanar": volumes.volume["XZ"],
+#         "yzplanar": volumes.volume["YZ"],
+#     }
+
+#     fcen = config.frequency
+#     df = config.frequency_width
+#     nfreq = config.nfreq
+#     # ============================================================
+#     # FLUX MONITORS
+#     # ============================================================
+#     if fluxes:
+#         if fluxes_X_size is None:
+#             fluxes_X_size = config.src_size[0]
+#         if fluxes_Y_size is None:
+#             fluxes_Y_size = config.src_size[1]
     
-        refl_fr = mp.FluxRegion(
-            center=mp.Vector3(0, 0, config.z_reflection),
-            size=mp.Vector3(
-                fluxes_X_size,
-                fluxes_Y_size,
-                0)
-        )
+#         refl_fr = mp.FluxRegion(
+#             center=mp.Vector3(0, 0, config.z_reflection),
+#             size=mp.Vector3(
+#                 fluxes_X_size,
+#                 fluxes_Y_size,
+#                 0)
+#         )
 
-        tran_fr = mp.FluxRegion(
-            center=mp.Vector3(0, 0, config.z_transmission),
-            size=mp.Vector3(
-                fluxes_X_size,
-                fluxes_Y_size,
-                0)
-        )
+#         tran_fr = mp.FluxRegion(
+#             center=mp.Vector3(0, 0, config.z_transmission),
+#             size=mp.Vector3(
+#                 fluxes_X_size,
+#                 fluxes_Y_size,
+#                 0)
+#         )
 
-        refl_empty = sim_empty.add_flux(fcen, df, nfreq, refl_fr)
-        tran_empty = sim_empty.add_flux(fcen, df, nfreq, tran_fr)
-        refl = sim_antenna.add_flux(fcen, df, nfreq, refl_fr)
-        tran = sim_antenna.add_flux(fcen, df, nfreq, tran_fr)
-    # ============================================================
-    # SCATTERING MONITORS
-    # ============================================================
-    if scattering:
-        if scattering_antenna is None:
-            raise ValueError("scattering_antenna must be provided for scattering spectrum")
-        # scattering box
-        Lx, Ly, Lz = make_scattering_box(
-            antenna=scattering_antenna,
-            config=config, padding_perc=10,
-            extra_padding_nm=(0, 0, 0))
+#         refl_empty = sim_empty.add_flux(fcen, df, nfreq, refl_fr)
+#         tran_empty = sim_empty.add_flux(fcen, df, nfreq, tran_fr)
+#         refl = sim_antenna.add_flux(fcen, df, nfreq, refl_fr)
+#         tran = sim_antenna.add_flux(fcen, df, nfreq, tran_fr)
+#     # ============================================================
+#     # SCATTERING MONITORS
+#     # ============================================================
+#     if scattering:
+#         if scattering_antenna is None:
+#             raise ValueError("scattering_antenna must be provided for scattering spectrum")
+#         # scattering box
+#         Lx, Ly, Lz = make_scattering_box(
+#             antenna=scattering_antenna,
+#             config=config, padding_perc=10,
+#             extra_padding_nm=(0, 0, 0))
 
-        cx, cy = scattering_antenna.center
-        cz = scattering_antenna.z_offset
+#         cx, cy = scattering_antenna.center
+#         cz = scattering_antenna.z_offset
 
-        scatt_regions = [
-            # --- X planes ---
-            mp.FluxRegion(
-                center=mp.Vector3(cx - Lx/2, cy, cz),
-                size=mp.Vector3(0, Ly, Lz)
-            ),
-            mp.FluxRegion(
-                center=mp.Vector3(cx + Lx/2, cy, cz),
-                size=mp.Vector3(0, Ly, Lz)
-            ),
+#         scatt_regions = [
+#             # --- X planes ---
+#             mp.FluxRegion(
+#                 center=mp.Vector3(cx - Lx/2, cy, cz),
+#                 size=mp.Vector3(0, Ly, Lz)
+#             ),
+#             mp.FluxRegion(
+#                 center=mp.Vector3(cx + Lx/2, cy, cz),
+#                 size=mp.Vector3(0, Ly, Lz)
+#             ),
 
-            # --- Y planes ---
-            mp.FluxRegion(
-                center=mp.Vector3(cx, cy - Ly/2, cz),
-                size=mp.Vector3(Lx, 0, Lz)
-            ),
-            mp.FluxRegion(
-                center=mp.Vector3(cx, cy + Ly/2, cz),
-                size=mp.Vector3(Lx, 0, Lz)
-            ),
+#             # --- Y planes ---
+#             mp.FluxRegion(
+#                 center=mp.Vector3(cx, cy - Ly/2, cz),
+#                 size=mp.Vector3(Lx, 0, Lz)
+#             ),
+#             mp.FluxRegion(
+#                 center=mp.Vector3(cx, cy + Ly/2, cz),
+#                 size=mp.Vector3(Lx, 0, Lz)
+#             ),
 
-            # --- Z planes ---
-            mp.FluxRegion(
-                center=mp.Vector3(cx, cy, cz - Lz/2),
-                size=mp.Vector3(Lx, Ly, 0)
-            ),
-            mp.FluxRegion(
-                center=mp.Vector3(cx, cy, cz + Lz/2),
-                size=mp.Vector3(Lx, Ly, 0)
-            ),
-        ]
+#             # --- Z planes ---
+#             mp.FluxRegion(
+#                 center=mp.Vector3(cx, cy, cz - Lz/2),
+#                 size=mp.Vector3(Lx, Ly, 0)
+#             ),
+#             mp.FluxRegion(
+#                 center=mp.Vector3(cx, cy, cz + Lz/2),
+#                 size=mp.Vector3(Lx, Ly, 0)
+#             ),
+#         ]
 
-        scatt_empty = [sim_empty.add_flux(fcen, df, nfreq, r) for r in scatt_regions]
-        scatt = [sim_antenna.add_flux(fcen, df, nfreq, r) for r in scatt_regions]
-    # ============================================================
-    # GAP DFT MONITORS
-    # ============================================================
-    if dft_gap_spectrum:
-        if dft_gap_spectrum and mode != "BOTH":
-            raise ValueError("DFT gap spectrum requires mode='BOTH'")
-        if scattering_antenna is None:
-            raise ValueError("scattering_antenna must be provided for DFT gap spectrum")
+#         scatt_empty = [sim_empty.add_flux(fcen, df, nfreq, r) for r in scatt_regions]
+#         scatt = [sim_antenna.add_flux(fcen, df, nfreq, r) for r in scatt_regions]
+#     # ============================================================
+#     # GAP DFT MONITORS
+#     # ============================================================
+#     if dft_gap_spectrum:
+#         if dft_gap_spectrum and mode != "BOTH":
+#             raise ValueError("DFT gap spectrum requires mode='BOTH'")
+#         if scattering_antenna is None:
+#             raise ValueError("scattering_antenna must be provided for DFT gap spectrum")
             
-        cx, cy = scattering_antenna.center
-        cz = scattering_antenna.z_offset
-        t = scattering_antenna.thickness
+#         cx, cy = scattering_antenna.center
+#         cz = scattering_antenna.z_offset
+#         t = scattering_antenna.thickness
 
-        dz = 1 / config.resolution
+#         dz = 1 / config.resolution
 
-        z_min = cz - t / 2
-        z_max = cz + t / 2
+#         z_min = cz - t / 2
+#         z_max = cz + t / 2
 
-        Nz = int(np.round(t / dz)) + 1
-        z_points = z_min + np.arange(Nz) * dz
+#         Nz = int(np.round(t / dz)) + 1
+#         z_points = z_min + np.arange(Nz) * dz
 
-        gap_dft_empty = []
-        gap_dft_antenna = []
+#         gap_dft_empty = []
+#         gap_dft_antenna = []
 
-        for z in z_points:
-            pt = mp.Vector3(cx, cy, z)
-            # EMPTY
-            gap_dft_empty.append(
-                sim_empty.add_dft_fields(
-                    [mp.Ex, mp.Ey, mp.Ez],
-                    fcen,
-                    df,
-                    nfreq,
-                    where=mp.Volume(center=pt, size=mp.Vector3(0, 0, 0))
-                )
-            )
-            # ANTENNA
-            gap_dft_antenna.append(
-                sim_antenna.add_dft_fields(
-                    [mp.Ex, mp.Ey, mp.Ez],
-                    fcen,
-                    df,
-                    nfreq,
-                    where=mp.Volume(center=pt, size=mp.Vector3(0, 0, 0))
-                )
-            )
+#         for z in z_points:
+#             pt = mp.Vector3(cx, cy, z)
+#             # EMPTY
+#             gap_dft_empty.append(
+#                 sim_empty.add_dft_fields(
+#                     [mp.Ex, mp.Ey, mp.Ez],
+#                     fcen,
+#                     df,
+#                     nfreq,
+#                     where=mp.Volume(center=pt, size=mp.Vector3(0, 0, 0))
+#                 )
+#             )
+#             # ANTENNA
+#             gap_dft_antenna.append(
+#                 sim_antenna.add_dft_fields(
+#                     [mp.Ex, mp.Ey, mp.Ez],
+#                     fcen,
+#                     df,
+#                     nfreq,
+#                     where=mp.Volume(center=pt, size=mp.Vector3(0, 0, 0))
+#                 )
+#             )
 
-    # ============================================================
-    # HARMONIC INVERSION IN GAP
-    # ============================================================
-    if harminv:
-        if scattering_antenna is None:
-            raise ValueError("scattering_antenna must be provided for Harminv")
+#     # ============================================================
+#     # HARMONIC INVERSION IN GAP
+#     # ============================================================
+#     if harminv:
+#         if scattering_antenna is None:
+#             raise ValueError("scattering_antenna must be provided for Harminv")
 
-        harminv_t0 = 8 # for debug !! after -> to config
+#         harminv_t0 = 8 # for debug !! after -> to config
     
-        cx, cy = scattering_antenna.center
-        cz = scattering_antenna.z_offset
-        t = scattering_antenna.thickness
+#         cx, cy = scattering_antenna.center
+#         cz = scattering_antenna.z_offset
+#         t = scattering_antenna.thickness
     
-        dz = 1 / config.resolution
+#         dz = 1 / config.resolution
     
-        # --- in gap ---
-        gap_points = [
-            mp.Vector3(cx, cy, cz - t/2 + 2*dz),  # bottom
-            mp.Vector3(cx, cy, cz),             # center
-            mp.Vector3(cx, cy, cz + t/2 - 2*dz),  # top
-        ]
+#         # --- in gap ---
+#         gap_points = [
+#             mp.Vector3(cx, cy, cz - t/2 + 2*dz),  # bottom
+#             mp.Vector3(cx, cy, cz),             # center
+#             mp.Vector3(cx, cy, cz + t/2 - 2*dz),  # top
+#         ]
     
-        # --- corner of antena ---
-        # To have the same distance from the corner to the point as from the main corner to the gap center,
-        # we need to take the angle into account
-        corner_deg = np.arctan(scattering_antenna.width / 2 / scattering_antenna.length)
-        corner_cx = cx + scattering_antenna.gap/2 + scattering_antenna.length + (scattering_antenna.gap/2.0)*np.cos(corner_deg) 
-        corner_cy = cy + scattering_antenna.width/2 + (scattering_antenna.gap/2.0)*np.sin(corner_deg)
-        tip_points = [
-            mp.Vector3(corner_cx,corner_cy, cz),
-            mp.Vector3(corner_cx,corner_cy, cz + 2*dz),
-            mp.Vector3(corner_cx,corner_cy, cz - 2*dz),
-        ]
+#         # --- corner of antena ---
+#         # To have the same distance from the corner to the point as from the main corner to the gap center,
+#         # we need to take the angle into account
+#         corner_deg = np.arctan(scattering_antenna.width / 2 / scattering_antenna.length)
+#         corner_cx = cx + scattering_antenna.gap/2 + scattering_antenna.length + (scattering_antenna.gap/2.0)*np.cos(corner_deg) 
+#         corner_cy = cy + scattering_antenna.width/2 + (scattering_antenna.gap/2.0)*np.sin(corner_deg)
+#         tip_points = [
+#             mp.Vector3(corner_cx,corner_cy, cz),
+#             mp.Vector3(corner_cx,corner_cy, cz + 2*dz),
+#             mp.Vector3(corner_cx,corner_cy, cz - 2*dz),
+#         ]
     
-        # --- arm ---
-        arm_cx = cx + scattering_antenna.length + scattering_antenna.gap
-        arm_points = [
-            mp.Vector3(arm_cx, cy, cz),
-            mp.Vector3(arm_cx, cy, cz + 2*dz),
-            mp.Vector3(arm_cx, cy, cz - 2*dz),
-        ]
+#         # --- arm ---
+#         arm_cx = cx + scattering_antenna.length + scattering_antenna.gap
+#         arm_points = [
+#             mp.Vector3(arm_cx, cy, cz),
+#             mp.Vector3(arm_cx, cy, cz + 2*dz),
+#             mp.Vector3(arm_cx, cy, cz - 2*dz),
+#         ]
     
-        # --- far above ---
-        far_point = mp.Vector3(cx, cy, cz + 2*t)
+#         # --- far above ---
+#         far_point = mp.Vector3(cx, cy, cz + 2*t)
     
-        harminv_points = (
-            gap_points +
-            tip_points +
-            arm_points +
-            [far_point]
-        )
+#         harminv_points = (
+#             gap_points +
+#             tip_points +
+#             arm_points +
+#             [far_point]
+#         )
     
-        harminv_objects = []
+#         harminv_objects = []
     
-        for pt in harminv_points:
-            hi_fcen = fcen
-            hi_df = df
-            h = mp.Harminv(mp.Ex, pt, hi_fcen, hi_df, mxbands=100) # !! mp.Ex for debug -> after should be config.component
-            harminv_objects.append((pt, h))
-    # ============================================================
-    # EMPTY STRUCTURE
-    # ============================================================
-    if mode in ["EMPTY", "BOTH"]:
-        if mp.am_master():
-            print("Running simulation WITHOUT antenna")
-            append_time_to_file(config, prefix="Running simulation WITHOUT antenna: ")
+#         for pt in harminv_points:
+#             hi_fcen = fcen
+#             hi_df = df
+#             h = mp.Harminv(mp.Ex, pt, hi_fcen, hi_df, mxbands=100) # !! mp.Ex for debug -> after should be config.component
+#             harminv_objects.append((pt, h))
+#     # ============================================================
+#     # EMPTY STRUCTURE
+#     # ============================================================
+#     if mode in ["EMPTY", "BOTH"]:
+#         if mp.am_master():
+#             print("Running simulation WITHOUT antenna")
+#             append_time_to_file(config, prefix="Running simulation WITHOUT antenna: ")
 
-        empty_planes = {f"{k}-empty": v for k, v in planes.items()}
+#         empty_planes = {f"{k}-empty": v for k, v in planes.items()}
 
-        sim_empty = collect_fields_with_output(
-            sim_empty,
-            volumes=empty_planes,
-            delta_t=config.sim_time_step,
-            until=config.sim_time,
-            start_time=0,
-            path=config.path_to_save,
-            calc_E_fields=calc_E,
-            calc_H_fields=calc_H,
-            calc_Dpwr=calc_DPWR,
-        )
-        if fluxes and mode == "BOTH":
-            incident_flux = mp.get_fluxes(tran_empty)
-            refl_data = sim_empty.get_flux_data(refl_empty)
-            sim_antenna.load_minus_flux_data(refl, refl_data)
-        if scattering and mode == "BOTH":
-            scatt_data = [sim_empty.get_flux_data(f) for f in scatt_empty]
-            scatt_flux_faces_empty = [np.asarray(mp.get_fluxes(f)) for f in scatt_empty]
-            for f, d in zip(scatt, scatt_data):
-                sim_antenna.load_minus_flux_data(f, d)
-            incident_flux_top = np.asarray(mp.get_fluxes(scatt_empty[5]))
-            intensity = incident_flux_top / (Lx * Ly)
-        if dft_gap_spectrum and mode == "BOTH":
-            gap_data_empty = {
-                "Ex": [],
-                "Ey": [],
-                "Ez": [],
-            }
+#         sim_empty = collect_fields_with_output(
+#             sim_empty,
+#             volumes=empty_planes,
+#             delta_t=config.sim_time_step,
+#             until=config.sim_time,
+#             start_time=0,
+#             path=config.path_to_save,
+#             calc_E_fields=calc_E,
+#             calc_H_fields=calc_H,
+#             calc_Dpwr=calc_DPWR,
+#         )
+#         if fluxes and mode == "BOTH":
+#             incident_flux = mp.get_fluxes(tran_empty)
+#             refl_data = sim_empty.get_flux_data(refl_empty)
+#             sim_antenna.load_minus_flux_data(refl, refl_data)
+#         if scattering and mode == "BOTH":
+#             scatt_data = [sim_empty.get_flux_data(f) for f in scatt_empty]
+#             scatt_flux_faces_empty = [np.asarray(mp.get_fluxes(f)) for f in scatt_empty]
+#             for f, d in zip(scatt, scatt_data):
+#                 sim_antenna.load_minus_flux_data(f, d)
+#             incident_flux_top = np.asarray(mp.get_fluxes(scatt_empty[5]))
+#             intensity = incident_flux_top / (Lx * Ly)
+#         if dft_gap_spectrum and mode == "BOTH":
+#             gap_data_empty = {
+#                 "Ex": [],
+#                 "Ey": [],
+#                 "Ez": [],
+#             }
         
-            for dft_e in gap_dft_empty:
+#             for dft_e in gap_dft_empty:
         
-                Ex_e = np.array([
-                    sim_empty.get_dft_array(dft_e, mp.Ex, i)
-                    for i in range(nfreq)
-                ])
-                Ey_e = np.array([
-                    sim_empty.get_dft_array(dft_e, mp.Ey, i)
-                    for i in range(nfreq)
-                ])
-                Ez_e = np.array([
-                    sim_empty.get_dft_array(dft_e, mp.Ez, i)
-                    for i in range(nfreq)
-                ])
+#                 Ex_e = np.array([
+#                     sim_empty.get_dft_array(dft_e, mp.Ex, i)
+#                     for i in range(nfreq)
+#                 ])
+#                 Ey_e = np.array([
+#                     sim_empty.get_dft_array(dft_e, mp.Ey, i)
+#                     for i in range(nfreq)
+#                 ])
+#                 Ez_e = np.array([
+#                     sim_empty.get_dft_array(dft_e, mp.Ez, i)
+#                     for i in range(nfreq)
+#                 ])
         
-                gap_data_empty["Ex"].append(np.abs(Ex_e)**2)
-                gap_data_empty["Ey"].append(np.abs(Ey_e)**2)
-                gap_data_empty["Ez"].append(np.abs(Ez_e)**2)
+#                 gap_data_empty["Ex"].append(np.abs(Ex_e)**2)
+#                 gap_data_empty["Ey"].append(np.abs(Ey_e)**2)
+#                 gap_data_empty["Ez"].append(np.abs(Ez_e)**2)
         
-            # numpy
-            for comp in gap_data_empty:
-                gap_data_empty[comp] = np.array(gap_data_empty[comp])
+#             # numpy
+#             for comp in gap_data_empty:
+#                 gap_data_empty[comp] = np.array(gap_data_empty[comp])
 
-        if mp.am_master():
-            print("Done.")
-        sim_empty.reset_meep()
+#         if mp.am_master():
+#             print("Done.")
+#         sim_empty.reset_meep()
 
-    # ============================================================
-    # WITH ANTENNA
-    # ============================================================
-    if mode in ["WITH_ANTENNA", "BOTH"]:
-        if mp.am_master():
-            print("Running simulation WITH antenna")
-            append_time_to_file(config, prefix="Running simulation WITH antenna: ")
+#     # ============================================================
+#     # WITH ANTENNA
+#     # ============================================================
+#     if mode in ["WITH_ANTENNA", "BOTH"]:
+#         if mp.am_master():
+#             print("Running simulation WITH antenna")
+#             append_time_to_file(config, prefix="Running simulation WITH antenna: ")
 
-        if harminv:
-            extra_run_functions = [
-                mp.after_time(harminv_t0, h) for _, h in harminv_objects
-            ]
-        else:
-            extra_run_functions = None
+#         if harminv:
+#             extra_run_functions = [
+#                 mp.after_time(harminv_t0, h) for _, h in harminv_objects
+#             ]
+#         else:
+#             extra_run_functions = None
         
-        sim_antenna = collect_fields_with_output(
-            sim_antenna,
-            volumes=planes,
-            delta_t=config.sim_time_step,
-            until=config.sim_time,
-            start_time=0,
-            path=config.path_to_save,
-            calc_E_fields=calc_E,
-            calc_H_fields=calc_H,
-            calc_Dpwr=calc_DPWR,
-            extra_run_functions=extra_run_functions,
-        )
-        if fluxes and mode == "BOTH":
-            refl_flux = mp.get_fluxes(refl)
-            tran_flux = mp.get_fluxes(tran)
-            flux_freqs = mp.get_flux_freqs(tran)
-        if scattering and mode == "BOTH":
-            scatt_flux_faces = [np.asarray(mp.get_fluxes(f)) for f in scatt]
+#         sim_antenna = collect_fields_with_output(
+#             sim_antenna,
+#             volumes=planes,
+#             delta_t=config.sim_time_step,
+#             until=config.sim_time,
+#             start_time=0,
+#             path=config.path_to_save,
+#             calc_E_fields=calc_E,
+#             calc_H_fields=calc_H,
+#             calc_Dpwr=calc_DPWR,
+#             extra_run_functions=extra_run_functions,
+#         )
+#         if fluxes and mode == "BOTH":
+#             refl_flux = mp.get_fluxes(refl)
+#             tran_flux = mp.get_fluxes(tran)
+#             flux_freqs = mp.get_flux_freqs(tran)
+#         if scattering and mode == "BOTH":
+#             scatt_flux_faces = [np.asarray(mp.get_fluxes(f)) for f in scatt]
 
-            x1, x2, y1, y2, z1, z2 = scatt_flux_faces
+#             x1, x2, y1, y2, z1, z2 = scatt_flux_faces
 
-            scatt_flux_total = (
-                x1 - x2 +
-                y1 - y2 +
-                z1 - z2
-            )
-            scatt_cross_section = scatt_flux_total / intensity # <- from empty
-            flux_freqs_scatt = mp.get_flux_freqs(scatt_empty[5])  # z2
-        if dft_gap_spectrum and mode == "BOTH":
-            gap_data = {
-                "Ex": {"empty": gap_data_empty["Ex"], "antenna": []},
-                "Ey": {"empty": gap_data_empty["Ey"], "antenna": []},
-                "Ez": {"empty": gap_data_empty["Ez"], "antenna": []},
-            }
+#             scatt_flux_total = (
+#                 x1 - x2 +
+#                 y1 - y2 +
+#                 z1 - z2
+#             )
+#             scatt_cross_section = scatt_flux_total / intensity # <- from empty
+#             flux_freqs_scatt = mp.get_flux_freqs(scatt_empty[5])  # z2
+#         if dft_gap_spectrum and mode == "BOTH":
+#             gap_data = {
+#                 "Ex": {"empty": gap_data_empty["Ex"], "antenna": []},
+#                 "Ey": {"empty": gap_data_empty["Ey"], "antenna": []},
+#                 "Ez": {"empty": gap_data_empty["Ez"], "antenna": []},
+#             }
 
-            for dft_a in gap_dft_antenna:
+#             for dft_a in gap_dft_antenna:
 
-                Ex_a = np.array([
-                    sim_antenna.get_dft_array(dft_a, mp.Ex, i)
-                    for i in range(nfreq)
-                ])
-                Ey_a = np.array([
-                    sim_antenna.get_dft_array(dft_a, mp.Ey, i)
-                    for i in range(nfreq)
-                ])
-                Ez_a = np.array([
-                    sim_antenna.get_dft_array(dft_a, mp.Ez, i)
-                    for i in range(nfreq)
-                ])
+#                 Ex_a = np.array([
+#                     sim_antenna.get_dft_array(dft_a, mp.Ex, i)
+#                     for i in range(nfreq)
+#                 ])
+#                 Ey_a = np.array([
+#                     sim_antenna.get_dft_array(dft_a, mp.Ey, i)
+#                     for i in range(nfreq)
+#                 ])
+#                 Ez_a = np.array([
+#                     sim_antenna.get_dft_array(dft_a, mp.Ez, i)
+#                     for i in range(nfreq)
+#                 ])
 
-                gap_data["Ex"]["antenna"].append(np.abs(Ex_a)**2)
-                gap_data["Ey"]["antenna"].append(np.abs(Ey_a)**2)
-                gap_data["Ez"]["antenna"].append(np.abs(Ez_a)**2)
+#                 gap_data["Ex"]["antenna"].append(np.abs(Ex_a)**2)
+#                 gap_data["Ey"]["antenna"].append(np.abs(Ey_a)**2)
+#                 gap_data["Ez"]["antenna"].append(np.abs(Ez_a)**2)
 
-            # numpy
-            for comp in gap_data:
-                gap_data[comp]["antenna"] = np.array(gap_data[comp]["antenna"])
+#             # numpy
+#             for comp in gap_data:
+#                 gap_data[comp]["antenna"] = np.array(gap_data[comp]["antenna"])
 
-            gap_data["E2"] = {}
+#             gap_data["E2"] = {}
 
-            gap_data["E2"]["antenna"] = (
-                gap_data["Ex"]["antenna"] +
-                gap_data["Ey"]["antenna"] +
-                gap_data["Ez"]["antenna"]
-            )
+#             gap_data["E2"]["antenna"] = (
+#                 gap_data["Ex"]["antenna"] +
+#                 gap_data["Ey"]["antenna"] +
+#                 gap_data["Ez"]["antenna"]
+#             )
 
-            gap_data["E2"]["empty"] = (
-                gap_data["Ex"]["empty"] +
-                gap_data["Ey"]["empty"] +
-                gap_data["Ez"]["empty"]
-            )
+#             gap_data["E2"]["empty"] = (
+#                 gap_data["Ex"]["empty"] +
+#                 gap_data["Ey"]["empty"] +
+#                 gap_data["Ez"]["empty"]
+#             )
 
-            eps = 1e-20
+#             eps = 1e-20
 
-            for comp in gap_data:
-                gap_data[comp]["enh"] = (
-                    gap_data[comp]["antenna"] /
-                    (gap_data[comp]["empty"] + eps)
-                )
-        if mp.am_master():
-            print("Done.")
-        sim_antenna.reset_meep()
+#             for comp in gap_data:
+#                 gap_data[comp]["enh"] = (
+#                     gap_data[comp]["antenna"] /
+#                     (gap_data[comp]["empty"] + eps)
+#                 )
+#         if mp.am_master():
+#             print("Done.")
+#         sim_antenna.reset_meep()
 
-    # ============================================================
-    # TRAN AND REFL CALCULATION
-    # ============================================================
-    if fluxes and mode == "BOTH":
-        if mp.am_master():
-            print("Calculating fluxes")
-        compute_T_R_A(
-            incident_flux,
-            tran_flux, refl_flux,
-            flux_freqs,
-            config.path_to_save)
-        if mp.am_master():
-            print("Done.")
+#     # ============================================================
+#     # TRAN AND REFL CALCULATION
+#     # ============================================================
+#     if fluxes and mode == "BOTH":
+#         if mp.am_master():
+#             print("Calculating fluxes")
+#         compute_T_R_A(
+#             incident_flux,
+#             tran_flux, refl_flux,
+#             flux_freqs,
+#             config.path_to_save)
+#         if mp.am_master():
+#             print("Done.")
 
-    # ============================================================
-    # SCATT CALCULATION
-    # ============================================================        
-    if scattering and mode == "BOTH":
-        if mp.am_master():
-            print("Calculating scattering")
-        compute_scattering(
-            scatt_cross_section,
-            intensity,
-            flux_freqs,
-            scatt_flux_faces,
-            scatt_flux_faces_empty,
-            save_path=config.path_to_save,
-        )
-        if mp.am_master():
-            print("Done.")
+#     # ============================================================
+#     # SCATT CALCULATION
+#     # ============================================================        
+#     if scattering and mode == "BOTH":
+#         if mp.am_master():
+#             print("Calculating scattering")
+#         compute_scattering(
+#             scatt_cross_section,
+#             intensity,
+#             flux_freqs,
+#             scatt_flux_faces,
+#             scatt_flux_faces_empty,
+#             save_path=config.path_to_save,
+#         )
+#         if mp.am_master():
+#             print("Done.")
 
-    # ============================================================
-    # GAP DFT DATA COLLECTION
-    # ============================================================        
-    if dft_gap_spectrum and mode == "BOTH":
-        if mp.am_master():
-            print("Calculating gap DFT spectrum")
-        freqs = np.linspace(fcen - df/2, fcen + df/2, nfreq)
-        compute_gap_spectrum(
-            gap_data,
-            z_points,
-            freqs,
-            save_path=config.path_to_save,
-        )
-        if mp.am_master():
-            print("Done.")
+#     # ============================================================
+#     # GAP DFT DATA COLLECTION
+#     # ============================================================        
+#     if dft_gap_spectrum and mode == "BOTH":
+#         if mp.am_master():
+#             print("Calculating gap DFT spectrum")
+#         freqs = np.linspace(fcen - df/2, fcen + df/2, nfreq)
+#         compute_gap_spectrum(
+#             gap_data,
+#             z_points,
+#             freqs,
+#             save_path=config.path_to_save,
+#         )
+#         if mp.am_master():
+#             print("Done.")
 
-    # ============================================================
-    # HARMINV CALCULATION
-    # ============================================================
-    if harminv and mode in ["WITH_ANTENNA", "BOTH"]:
-        if mp.am_master():
-            print("Calculating Harminv modes")
-        compute_harminv(
-            harminv_objects,
-            save_path=config.path_to_save,
-        )
-        if mp.am_master():
-            print("Done.")
+#     # ============================================================
+#     # HARMINV CALCULATION
+#     # ============================================================
+#     if harminv and mode in ["WITH_ANTENNA", "BOTH"]:
+#         if mp.am_master():
+#             print("Calculating Harminv modes")
+#         compute_harminv(
+#             harminv_objects,
+#             save_path=config.path_to_save,
+#         )
+#         if mp.am_master():
+#             print("Done.")
 
-    # ============================================================
-    # ENHANCEMENT CALCULATION
-    # ============================================================
-    if (mode == "BOTH" or mode == "ENH_ONLY") and mp.am_master():
-        if mp.am_master():
-            print("Computing enhancement maps")
-            append_time_to_file(config, prefix="Computing enhancement maps: ")
+#     # ============================================================
+#     # ENHANCEMENT CALCULATION
+#     # ============================================================
+#     if (mode == "BOTH" or mode == "ENH_ONLY") and mp.am_master():
+#         if mp.am_master():
+#             print("Computing enhancement maps")
+#             append_time_to_file(config, prefix="Computing enhancement maps: ")
         
-        enhancement_planes = [
-            "xyplanar",
-            "xyplanarTOP",
-            "xzplanar",
-            "yzplanar",
-        ]
+#         enhancement_planes = [
+#             "xyplanar",
+#             "xyplanarTOP",
+#             "xzplanar",
+#             "yzplanar",
+#         ]
 
-        # ---------- E FIELD ENHANCEMENT ----------
-        if calc_E:
-            for base_name in enhancement_planes:
+#         # ---------- E FIELD ENHANCEMENT ----------
+#         if calc_E:
+#             for base_name in enhancement_planes:
 
-                enhancement_divided_by_maxes_arr(
-                    [f"{base_name}_ex.h5", f"{base_name}_ey.h5", f"{base_name}_ez.h5"],
-                    [f"{base_name}-empty_ex.h5", f"{base_name}-empty_ey.h5", f"{base_name}-empty_ez.h5"],
-                    save_to=f"enhancement_{base_name}_e2.h5",
-                    path=config.path_to_save,
-                    out_dataset_name="enhancement",
-                )
+#                 enhancement_divided_by_maxes_arr(
+#                     [f"{base_name}_ex.h5", f"{base_name}_ey.h5", f"{base_name}_ez.h5"],
+#                     [f"{base_name}-empty_ex.h5", f"{base_name}-empty_ey.h5", f"{base_name}-empty_ez.h5"],
+#                     save_to=f"enhancement_{base_name}_e2.h5",
+#                     path=config.path_to_save,
+#                     out_dataset_name="enhancement",
+#                 )
 
-        # ---------- H FIELD ENHANCEMENT ----------
-        if calc_H:
-            for base_name in enhancement_planes:
+#         # ---------- H FIELD ENHANCEMENT ----------
+#         if calc_H:
+#             for base_name in enhancement_planes:
 
-                enhancement_divided_by_maxes_arr(
-                    [f"{base_name}_hx.h5", f"{base_name}_hy.h5", f"{base_name}_hz.h5"],
-                    [f"{base_name}-empty_hx.h5", f"{base_name}-empty_hy.h5", f"{base_name}-empty_hz.h5"],
-                    save_to=f"enhancement_{base_name}_h2.h5",
-                    path=config.path_to_save,
-                    out_dataset_name="enhancement",
-                )
-    return 0
+#                 enhancement_divided_by_maxes_arr(
+#                     [f"{base_name}_hx.h5", f"{base_name}_hy.h5", f"{base_name}_hz.h5"],
+#                     [f"{base_name}-empty_hx.h5", f"{base_name}-empty_hy.h5", f"{base_name}-empty_hz.h5"],
+#                     save_to=f"enhancement_{base_name}_h2.h5",
+#                     path=config.path_to_save,
+#                     out_dataset_name="enhancement",
+#                 )
+#     return 0
 
 def get_phys_ranges(bounds, plane):
     if plane == "XY":
@@ -1304,341 +1327,341 @@ def animate_enhancement_fields(config, volumes, draw_params, field='E', animate=
         )
     return 0
 
-def compute_T_R_A(
-    incident_flux,
-    tran_flux,
-    refl_flux,
-    flux_freqs,
-    save_path=None,
-    save_name="spectra_TRA.txt"
-):
-    """
-    Compute reflection (R), transmission (T), absorption (A)
-    and wavelength from Meep flux monitors.
+# def compute_T_R_A(
+#     incident_flux,
+#     tran_flux,
+#     refl_flux,
+#     flux_freqs,
+#     save_path=None,
+#     save_name="spectra_TRA.txt"
+# ):
+#     """
+#     Compute reflection (R), transmission (T), absorption (A)
+#     and wavelength from Meep flux monitors.
 
-    Parameters
-    ----------
-    incident_flux : list or array
-        Flux through transmission monitor in empty simulation.
+#     Parameters
+#     ----------
+#     incident_flux : list or array
+#         Flux through transmission monitor in empty simulation.
 
-    tran_flux : list or array
-        Flux through transmission monitor with structure.
+#     tran_flux : list or array
+#         Flux through transmission monitor with structure.
 
-    refl_flux : list or array
-        Flux through reflection monitor with structure.
+#     refl_flux : list or array
+#         Flux through reflection monitor with structure.
 
-    flux_freqs : list or array
-        Frequencies returned by mp.get_flux_freqs().
+#     flux_freqs : list or array
+#         Frequencies returned by mp.get_flux_freqs().
 
-    save_path : str or None
-        Directory where results will be saved.
+#     save_path : str or None
+#         Directory where results will be saved.
 
-    save_name : str
-        Name of the output file.
+#     save_name : str
+#         Name of the output file.
 
-    Returns
-    -------
-    wavelength, R, T, A : numpy arrays
-    """
-    if not mp.am_master():
-        return
+#     Returns
+#     -------
+#     wavelength, R, T, A : numpy arrays
+#     """
+#     if not mp.am_master():
+#         return
 
-    incident_flux = np.array(incident_flux)
-    tran_flux = np.array(tran_flux)
-    refl_flux = np.array(refl_flux)
-    flux_freqs = np.array(flux_freqs)
+#     incident_flux = np.array(incident_flux)
+#     tran_flux = np.array(tran_flux)
+#     refl_flux = np.array(refl_flux)
+#     flux_freqs = np.array(flux_freqs)
 
-    # -----------------------------------------
-    # wavelength
-    # -----------------------------------------
-    wavelength = 1.0 / flux_freqs
+#     # -----------------------------------------
+#     # wavelength
+#     # -----------------------------------------
+#     wavelength = 1.0 / flux_freqs
 
-    # -----------------------------------------
-    # R T A
-    # -----------------------------------------
-    R = -refl_flux / incident_flux
-    T = tran_flux / incident_flux
-    A = 1.0 - R - T
+#     # -----------------------------------------
+#     # R T A
+#     # -----------------------------------------
+#     R = -refl_flux / incident_flux
+#     T = tran_flux / incident_flux
+#     A = 1.0 - R - T
 
-    # -----------------------------------------
-    # CREATE TRA FOLDER
-    # -----------------------------------------
-    if save_path is not None:
-        tra_dir = os.path.join(save_path, "TRA")
-        os.makedirs(tra_dir, exist_ok=True)
-    else:
-        tra_dir = None
+#     # -----------------------------------------
+#     # CREATE TRA FOLDER
+#     # -----------------------------------------
+#     if save_path is not None:
+#         tra_dir = os.path.join(save_path, "TRA")
+#         os.makedirs(tra_dir, exist_ok=True)
+#     else:
+#         tra_dir = None
 
-    # -----------------------------------------
-    # SAVE DATA
-    # -----------------------------------------
-    if tra_dir is not None:
+#     # -----------------------------------------
+#     # SAVE DATA
+#     # -----------------------------------------
+#     if tra_dir is not None:
 
-        data = np.column_stack((wavelength, R, T, A))
-        header = "lambda  R  T  A"
+#         data = np.column_stack((wavelength, R, T, A))
+#         header = "lambda  R  T  A"
 
-        np.savetxt(
-            os.path.join(tra_dir, save_name),
-            data,
-            header=header
-        )
+#         np.savetxt(
+#             os.path.join(tra_dir, save_name),
+#             data,
+#             header=header
+#         )
 
-    # -----------------------------------------
-    # PLOT
-    # -----------------------------------------
-    multi_line_plotter_same_axes(
-        xdata_list=[wavelength, wavelength, wavelength],
-        ydata_list=[R, T, A],
-        labels=["R", "T", "A"],
-        colors=["blue", "red", "green"],
-        linestyles=["-", "--", "-."],
-        xlabel="Wavelength [μm]",
-        ylabel="Fraction",
-        title="Reflection, Transmission, Absorption Spectra",
-        legend=True,
-        save_path=tra_dir,
-        save_name="spectra_T_R_A.png",
-    )
+#     # -----------------------------------------
+#     # PLOT
+#     # -----------------------------------------
+#     multi_line_plotter_same_axes(
+#         xdata_list=[wavelength, wavelength, wavelength],
+#         ydata_list=[R, T, A],
+#         labels=["R", "T", "A"],
+#         colors=["blue", "red", "green"],
+#         linestyles=["-", "--", "-."],
+#         xlabel="Wavelength [μm]",
+#         ylabel="Fraction",
+#         title="Reflection, Transmission, Absorption Spectra",
+#         legend=True,
+#         save_path=tra_dir,
+#         save_name="spectra_T_R_A.png",
+#     )
 
-    return wavelength, R, T, A
+#     return wavelength, R, T, A
 
-def make_scattering_box(
-    antenna,
-    config,
-    padding_perc=1,
-    extra_padding_nm=(0, 0, 0),  # (dx, dy, dz) in nm
-):
-    Lx, Ly, Lz = antenna.bounding_box()
+# def make_scattering_box(
+#     antenna,
+#     config,
+#     padding_perc=1,
+#     extra_padding_nm=(0, 0, 0),  # (dx, dy, dz) in nm
+# ):
+#     Lx, Ly, Lz = antenna.bounding_box()
 
-    # -----------------------------------------
-    # minimal padding from grid
-    # -----------------------------------------
-    lower_limit = (1 / config.resolution) * 2
-    check = padding_perc / 100 * min(Lx, Ly, Lz)
+#     # -----------------------------------------
+#     # minimal padding from grid
+#     # -----------------------------------------
+#     lower_limit = (1 / config.resolution) * 2
+#     check = padding_perc / 100 * min(Lx, Ly, Lz)
 
-    if check < lower_limit:
-        print(f"Warning: padding_perc {padding_perc:.2f}% too small\n")
-        padding_perc = lower_limit / min(Lx, Ly, Lz) * 100
-        print(f"Increased to {padding_perc:.2f}% for sufficient grid padding.\n")
+#     if check < lower_limit:
+#         print(f"Warning: padding_perc {padding_perc:.2f}% too small\n")
+#         padding_perc = lower_limit / min(Lx, Ly, Lz) * 100
+#         print(f"Increased to {padding_perc:.2f}% for sufficient grid padding.\n")
 
-    Lx = Lx * (1 + padding_perc / 100)
-    Ly = Ly * (1 + padding_perc / 100)
-    Lz = Lz * (1 + padding_perc / 100)
+#     Lx = Lx * (1 + padding_perc / 100)
+#     Ly = Ly * (1 + padding_perc / 100)
+#     Lz = Lz * (1 + padding_perc / 100)
 
-    # -----------------------------------------
-    # anizotropy correction
-    # -----------------------------------------
-    dx, dy, dz = extra_padding_nm
+#     # -----------------------------------------
+#     # anizotropy correction
+#     # -----------------------------------------
+#     dx, dy, dz = extra_padding_nm
 
-    xm = 1000  # nm to μm
+#     xm = 1000  # nm to μm
 
-    Lx += dx / xm
-    Ly += dy / xm
-    Lz += dz / xm
+#     Lx += dx / xm
+#     Ly += dy / xm
+#     Lz += dz / xm
 
-    Lx = np.ceil(Lx * xm) / xm
-    Ly = np.ceil(Ly * xm) / xm
-    Lz = np.ceil(Lz * xm) / xm
+#     Lx = np.ceil(Lx * xm) / xm
+#     Ly = np.ceil(Ly * xm) / xm
+#     Lz = np.ceil(Lz * xm) / xm
 
-    print(
-        f"Scattering box dimensions:\n"
-        f"  Lx = {Lx*1000:.2f} nm\n"
-        f"  Ly = {Ly*1000:.2f} nm\n"
-        f"  Lz = {Lz*1000:.2f} nm\n"
-        f"(padding={padding_perc:.2f}%, extra={extra_padding_nm} nm)"
-    )
+#     print(
+#         f"Scattering box dimensions:\n"
+#         f"  Lx = {Lx*1000:.2f} nm\n"
+#         f"  Ly = {Ly*1000:.2f} nm\n"
+#         f"  Lz = {Lz*1000:.2f} nm\n"
+#         f"(padding={padding_perc:.2f}%, extra={extra_padding_nm} nm)"
+#     )
 
-    return Lx, Ly, Lz
+#     return Lx, Ly, Lz
 
-def compute_scattering(
-    scatt_cross_section,
-    intensity,
-    flux_freqs,
-    scatt_flux_faces,
-    scatt_flux_faces_empty,
-    save_path=None,
-    save_name="spectra_scattering.txt",
-    save_faces_name="scattering_faces.txt",
-    save_faces_empty_name="scattering_faces_empty.txt",
-):
-    """
-    Compute and save scattering results from Meep flux monitors.
+# def compute_scattering(
+#     scatt_cross_section,
+#     intensity,
+#     flux_freqs,
+#     scatt_flux_faces,
+#     scatt_flux_faces_empty,
+#     save_path=None,
+#     save_name="spectra_scattering.txt",
+#     save_faces_name="scattering_faces.txt",
+#     save_faces_empty_name="scattering_faces_empty.txt",
+# ):
+#     """
+#     Compute and save scattering results from Meep flux monitors.
 
-    Parameters
-    ----------
-    scatt_cross_section : array-like
-        Scattering cross-section (sigma_scatt).
+#     Parameters
+#     ----------
+#     scatt_cross_section : array-like
+#         Scattering cross-section (sigma_scatt).
 
-    intensity : array-like
-        Incident intensity (W/area), frequency dependent.
+#     intensity : array-like
+#         Incident intensity (W/area), frequency dependent.
 
-    flux_freqs : array-like
-        Frequencies from mp.get_flux_freqs().
+#     flux_freqs : array-like
+#         Frequencies from mp.get_flux_freqs().
 
-    scatt_flux_faces : list of arrays
-        Flux through each face [x1, x2, y1, y2, z1, z2].
+#     scatt_flux_faces : list of arrays
+#         Flux through each face [x1, x2, y1, y2, z1, z2].
 
-    scatt_flux_faces_empty : list of arrays
-        Flux through each face in empty cell [x1, x2, y1, y2, z1, z2].
+#     scatt_flux_faces_empty : list of arrays
+#         Flux through each face in empty cell [x1, x2, y1, y2, z1, z2].
 
-    save_path : str or None
-        Directory where results will be saved.
+#     save_path : str or None
+#         Directory where results will be saved.
 
-    save_name : str
-        Name of scattering spectrum file.
+#     save_name : str
+#         Name of scattering spectrum file.
 
-    save_faces_name : str
-        Name of face flux output file.
+#     save_faces_name : str
+#         Name of face flux output file.
 
-    save_faces_empty_name : str
-        Name of empty face flux output file.
+#     save_faces_empty_name : str
+#         Name of empty face flux output file.
 
-    Returns
-    -------
-    wavelength, scatt_cross_section : numpy arrays
-    """
+#     Returns
+#     -------
+#     wavelength, scatt_cross_section : numpy arrays
+#     """
 
-    if not mp.am_master():
-        return
+#     if not mp.am_master():
+#         return
 
-    # -----------------------------------------
-    # Convert to numpy
-    # -----------------------------------------
-    scatt_cross_section = np.array(scatt_cross_section)
-    intensity = np.array(intensity)
-    flux_freqs = np.array(flux_freqs)
+#     # -----------------------------------------
+#     # Convert to numpy
+#     # -----------------------------------------
+#     scatt_cross_section = np.array(scatt_cross_section)
+#     intensity = np.array(intensity)
+#     flux_freqs = np.array(flux_freqs)
 
-    scatt_flux_faces = [np.array(f) for f in scatt_flux_faces]
-    x1, x2, y1, y2, z1, z2 = scatt_flux_faces
-    ex1, ex2, ey1, ey2, ez1, ez2 = scatt_flux_faces_empty
+#     scatt_flux_faces = [np.array(f) for f in scatt_flux_faces]
+#     x1, x2, y1, y2, z1, z2 = scatt_flux_faces
+#     ex1, ex2, ey1, ey2, ez1, ez2 = scatt_flux_faces_empty
 
-    # -----------------------------------------
-    # wavelength
-    # -----------------------------------------
-    wavelength = 1.0 / flux_freqs
+#     # -----------------------------------------
+#     # wavelength
+#     # -----------------------------------------
+#     wavelength = 1.0 / flux_freqs
 
-    # -----------------------------------------
-    # CREATE SCATTERING FOLDER
-    # -----------------------------------------
-    if save_path is not None:
-        scattering_dir = os.path.join(save_path, "scattering")
-        os.makedirs(scattering_dir, exist_ok=True)
-    else:
-        scattering_dir = None
+#     # -----------------------------------------
+#     # CREATE SCATTERING FOLDER
+#     # -----------------------------------------
+#     if save_path is not None:
+#         scattering_dir = os.path.join(save_path, "scattering")
+#         os.makedirs(scattering_dir, exist_ok=True)
+#     else:
+#         scattering_dir = None
 
-    # -----------------------------------------
-    # FILE 1: scattering spectrum
-    # -----------------------------------------
-    if scattering_dir is not None:
+#     # -----------------------------------------
+#     # FILE 1: scattering spectrum
+#     # -----------------------------------------
+#     if scattering_dir is not None:
 
-        data_main = np.column_stack(
-            (wavelength, scatt_cross_section, intensity)
-        )
+#         data_main = np.column_stack(
+#             (wavelength, scatt_cross_section, intensity)
+#         )
 
-        header_main = (
-            "# lambda(um)  sigma_scatt  intensity(W/um^2)\n"
-            "# sigma_scatt normalized by local incident intensity"
-        )
+#         header_main = (
+#             "# lambda(um)  sigma_scatt  intensity(W/um^2)\n"
+#             "# sigma_scatt normalized by local incident intensity"
+#         )
 
-        np.savetxt(
-            os.path.join(scattering_dir, save_name),
-            data_main,
-            header=header_main
-        )
+#         np.savetxt(
+#             os.path.join(scattering_dir, save_name),
+#             data_main,
+#             header=header_main
+#         )
 
-    # -----------------------------------------
-    # FILE 2: flux per face
-    # -----------------------------------------
-    if scattering_dir is not None:
+#     # -----------------------------------------
+#     # FILE 2: flux per face
+#     # -----------------------------------------
+#     if scattering_dir is not None:
 
-        data_faces = np.column_stack(
-            (flux_freqs, x1, x2, y1, y2, z1, z2)
-        )
+#         data_faces = np.column_stack(
+#             (flux_freqs, x1, x2, y1, y2, z1, z2)
+#         )
 
-        header_faces = "# freq  x1  x2  y1  y2  z1  z2"
+#         header_faces = "# freq  x1  x2  y1  y2  z1  z2"
 
-        np.savetxt(
-            os.path.join(scattering_dir, save_faces_name),
-            data_faces,
-            header=header_faces
-        )
+#         np.savetxt(
+#             os.path.join(scattering_dir, save_faces_name),
+#             data_faces,
+#             header=header_faces
+#         )
 
-    # -----------------------------------------
-    # FILE 3: z split
-    # -----------------------------------------
-    if scattering_dir is not None:
+#     # -----------------------------------------
+#     # FILE 3: z split
+#     # -----------------------------------------
+#     if scattering_dir is not None:
 
-        data_z = np.column_stack(
-            (flux_freqs, z1, z2)
-        )
+#         data_z = np.column_stack(
+#             (flux_freqs, z1, z2)
+#         )
 
-        header_z = "# freq  z_down(z1)  z_up(z2)"
+#         header_z = "# freq  z_down(z1)  z_up(z2)"
 
-        np.savetxt(
-            os.path.join(scattering_dir, "scattering_z_split.txt"),
-            data_z,
-            header=header_z
-        )
+#         np.savetxt(
+#             os.path.join(scattering_dir, "scattering_z_split.txt"),
+#             data_z,
+#             header=header_z
+#         )
 
-    # -----------------------------------------
-    # FILE 4: empty faces
-    # -----------------------------------------
-    if scattering_dir is not None:
+#     # -----------------------------------------
+#     # FILE 4: empty faces
+#     # -----------------------------------------
+#     if scattering_dir is not None:
 
-        data_faces_empty = np.column_stack(
-            (flux_freqs, ex1, ex2, ey1, ey2, ez1, ez2)
-        )
+#         data_faces_empty = np.column_stack(
+#             (flux_freqs, ex1, ex2, ey1, ey2, ez1, ez2)
+#         )
 
-        header_faces = "# freq  x1  x2  y1  y2  z1  z2"
+#         header_faces = "# freq  x1  x2  y1  y2  z1  z2"
 
-        np.savetxt(
-            os.path.join(scattering_dir, save_faces_empty_name),
-            data_faces_empty,
-            header=header_faces
-        )
+#         np.savetxt(
+#             os.path.join(scattering_dir, save_faces_empty_name),
+#             data_faces_empty,
+#             header=header_faces
+#         )
 
-    # -----------------------------------------
-    # PLOTS
-    # -----------------------------------------
-    line_plotter(
-        wavelength,
-        scatt_cross_section,
-        xlabel="Wavelength [μm]",
-        ylabel="Scattering cross-section",
-        title="Scattering Spectrum",
-        save_path=scattering_dir,
-        save_name="spectra_scattering.png",
-    )
+#     # -----------------------------------------
+#     # PLOTS
+#     # -----------------------------------------
+#     line_plotter(
+#         wavelength,
+#         scatt_cross_section,
+#         xlabel="Wavelength [μm]",
+#         ylabel="Scattering cross-section",
+#         title="Scattering Spectrum",
+#         save_path=scattering_dir,
+#         save_name="spectra_scattering.png",
+#     )
 
-    multi_line_plotter_same_axes(
-        xdata_list=[wavelength]*6,
-        ydata_list=[x1, x2, y1, y2, z1, z2],
-        labels=["x1", "x2", "y1", "y2", "z1", "z2"],
-        colors=["#149dff", "#14517c", "#ff7700", "#914300", "#5ec75e", "#205220"],
-        linestyles=["-", "-.", "-", "-.", "-", "-."],
-        xlabel="Wavelength [μm]",
-        ylabel="Scattering",
-        title="Scattering Spectrum",
-        legend=True,
-        save_path=scattering_dir,
-        save_name="spectra_scattering_each_face.png",
-    )
+#     multi_line_plotter_same_axes(
+#         xdata_list=[wavelength]*6,
+#         ydata_list=[x1, x2, y1, y2, z1, z2],
+#         labels=["x1", "x2", "y1", "y2", "z1", "z2"],
+#         colors=["#149dff", "#14517c", "#ff7700", "#914300", "#5ec75e", "#205220"],
+#         linestyles=["-", "-.", "-", "-.", "-", "-."],
+#         xlabel="Wavelength [μm]",
+#         ylabel="Scattering",
+#         title="Scattering Spectrum",
+#         legend=True,
+#         save_path=scattering_dir,
+#         save_name="spectra_scattering_each_face.png",
+#     )
 
-    multi_line_plotter_same_axes(
-        xdata_list=[wavelength]*6,
-        ydata_list=[ex1, ex2, ey1, ey2, ez1, ez2],
-        labels=["x1", "x2", "y1", "y2", "z1", "z2"],
-        colors=["#149dff", "#14517c", "#ff7700", "#914300", "#5ec75e", "#205220"],
-        linestyles=["-", "-.", "-", "-.", "-", "-."],
-        xlabel="Wavelength [μm]",
-        ylabel="Scattering",
-        title="Scattering Spectrum for empty cell",
-        legend=True,
-        save_path=scattering_dir,
-        save_name="spectra_scattering_each_face_empty.png",
-    )
+#     multi_line_plotter_same_axes(
+#         xdata_list=[wavelength]*6,
+#         ydata_list=[ex1, ex2, ey1, ey2, ez1, ez2],
+#         labels=["x1", "x2", "y1", "y2", "z1", "z2"],
+#         colors=["#149dff", "#14517c", "#ff7700", "#914300", "#5ec75e", "#205220"],
+#         linestyles=["-", "-.", "-", "-.", "-", "-."],
+#         xlabel="Wavelength [μm]",
+#         ylabel="Scattering",
+#         title="Scattering Spectrum for empty cell",
+#         legend=True,
+#         save_path=scattering_dir,
+#         save_name="spectra_scattering_each_face_empty.png",
+#     )
 
-    return wavelength, scatt_cross_section
+#     return wavelength, scatt_cross_section
 
 def compute_gap_spectrum(
     gap_data,
@@ -2123,6 +2146,9 @@ def compute_fields_2(
     TRL_X_size=None,
     TRL_Y_size=None,
     scattering=False,
+    scattering_object=None,
+    scattering_padding_perc=10,
+    scattering_extra_padding_nm=(0, 0, 0),
     dft_gap_spectrum=False,
     harminv=False,
     harminv_objects=None,
@@ -2168,8 +2194,14 @@ def compute_fields_2(
         
     elif sim_empty is not None:
     
+        # Empty planes
+        empty_planes = {
+            f"{name}-empty": vol
+            for name, vol in planes.items()
+        }
+        
+        # Transmitance-Reflectance-Loss (TRL)
         empty_TRL_monitors = None
-    
         if TRL:
             empty_TRL_monitors = setup_TRL_monitors(
                 sim_empty,
@@ -2178,25 +2210,36 @@ def compute_fields_2(
                 TRL_Y_size,
             )
     
-        empty_planes = {
-            f"{name}-empty": vol
-            for name, vol in planes.items()
-        }
+        # Scattering
+        empty_scattering_monitors = None
+        if scattering:
+            empty_scattering_monitors = setup_scattering_monitors(
+                sim=sim_empty,
+                scattering_object=scattering_object,
+                config=config,
+                padding_perc=scattering_padding_perc,
+                extra_padding_nm=scattering_extra_padding_nm,
+            )
     
         results["empty"] = run_structure(
             sim=sim_empty,
             structure_name="empty",
             planes=empty_planes,
             config=config,
+
             calc_E=calc_E,
             calc_H=calc_H,
             calc_DPWR=calc_DPWR,
+
             TRL=TRL,
             TRL_monitors=empty_TRL_monitors,
+
             scattering=scattering,
-            scattering_monitors=None,
+            scattering_monitors=empty_scattering_monitors,
+
             dft_gap_spectrum=dft_gap_spectrum,
             dft_monitors=None,
+
             harminv=False,
         )
     
@@ -2204,32 +2247,47 @@ def compute_fields_2(
     # SUBSTRATE
     # ============================================================
     if sim_substrate is not None:
+        # Transmitance-Reflectance-Loss (TRL)
+        substrate_TRL_monitors = None
         if TRL is True:
-            # TRL (Transmitance-Reflectance-Loss)
             substrate_TRL_monitors = setup_TRL_monitors(
                 sim_substrate,
                 config,
                 TRL_X_size,
                 TRL_Y_size,
             )
-        else:
-            substrate_TRL_monitors = None
+
+        # Scattering
+        substrate_scattering_monitors = None
+        if scattering:
+            substrate_scattering_monitors = setup_scattering_monitors(
+                sim=sim_substrate,
+                scattering_object=scattering_object,
+                config=config,
+                padding_perc=scattering_padding_perc,
+                extra_padding_nm=scattering_extra_padding_nm,
+            )
 
         results["substrate"] = run_structure(
             sim=sim_substrate,
             structure_name="substrate",
             planes=planes,
             config=config,
+
             calc_E=calc_E,
             calc_H=calc_H,
             calc_DPWR=calc_DPWR,
+
             TRL=TRL,
             TRL_monitors=substrate_TRL_monitors,
             TRL_reference=results["empty"]["TRL"],
+
             scattering=scattering,
-            scattering_monitors=None,
+            scattering_monitors=substrate_scattering_monitors,
+
             dft_gap_spectrum=dft_gap_spectrum,
             dft_monitors=None,
+
             harminv=harminv,
             harminv_objects=harminv_objects,
         )
@@ -2238,32 +2296,46 @@ def compute_fields_2(
     # ANTENNA
     # ============================================================
     if sim_antenna is not None:
+        # Transmitance-Reflectance-Loss (TRL)
+        antenna_TRL_monitors = None
         if TRL is True:
-            # TRL (Transmitance-Reflectance-Loss)
             antenna_TRL_monitors = setup_TRL_monitors(
                 sim_antenna,
                 config,
                 TRL_X_size,
                 TRL_Y_size,
             )
-        else:
-            antenna_TRL_monitors = None
+        # Scattering
+        antenna_scattering_monitors = None
+        if scattering:
+            antenna_scattering_monitors = setup_scattering_monitors(
+                sim=sim_antenna,
+                scattering_object=scattering_object,
+                config=config,
+                padding_perc=scattering_padding_perc,
+                extra_padding_nm=scattering_extra_padding_nm,
+            )
 
         results["antenna"] = run_structure(
             sim=sim_antenna,
             structure_name="antenna",
             planes=planes,
             config=config,
+
             calc_E=calc_E,
             calc_H=calc_H,
             calc_DPWR=calc_DPWR,
+
             TRL=TRL,
             TRL_monitors=antenna_TRL_monitors,
             TRL_reference=results["empty"]["TRL"],
+
             scattering=scattering,
-            scattering_monitors=None,
+            scattering_monitors=antenna_scattering_monitors,
+
             dft_gap_spectrum=dft_gap_spectrum,
             dft_monitors=None,
+
             harminv=harminv,
             harminv_objects=harminv_objects,
         )

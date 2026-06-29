@@ -171,16 +171,20 @@ def bowtie_substrate_experiment(material_name, COMMENT=None):
         sim_empty=sim_empty,
         # sim_substrate=sim_substrate,
         sim_antenna=sim_antenna,
-        empty_from_cache="results/bowtie__lam-660__gap-6__L-100__T-30__R-5__ant-Au__sub-Ge__9/cache/empty/",
+        # empty_from_cache="results/bowtie__lam-660__gap-6__L-100__T-30__R-5__ant-Au__sub-Ge__9/cache/empty/",
         volumes=antenna_vols,
         config=config,
+
         TRL=True,
         TRL_X_size=config.cell_size[0],
         TRL_Y_size=config.cell_size[1],
+
         # fluxes_X_size=substrate.length/2.0,
         # fluxes_Y_size=substrate.width/2.0,
-        # scattering=True,
-        # scattering_antenna=Top
+
+        scattering=True,
+        scattering_object=Top
+
         # dft_gap_spectrum=True,
         # harminv=True,
     )
