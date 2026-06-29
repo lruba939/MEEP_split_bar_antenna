@@ -2,11 +2,14 @@ import meep as mp
 from meep.materials import *
 import numpy as np
 import os
-from utils.logger import append_time_to_file
 import pickle
 import json
 
 from visualization.plotter import *
+from utils.logger import append_time_to_file
+from utils.simulation.cache import *
+from utils.simulation.trl import *
+
 # !!!!!!!!! ---> from main.src.simulation import * # CANT IMPORT DUE TO CIRCULAR DEPENDENCY
 
 def get_materials_dict(material_name=None):
@@ -2284,171 +2287,75 @@ def compute_fields_2(
                 save_name="TRL_antenna",
             )
 
-    return results
-
-def setup_TRL_monitors(sim, config, TRL_X_size=None, TRL_Y_size=None):
-
-    if TRL_X_size is None:
-        TRL_X_size = config.src_size[0]
-
-    if TRL_Y_size is None:
-        TRL_Y_size = config.src_size[1]
-
-    refl_fr = mp.FluxRegion(
-        center=mp.Vector3(
-            0,
-            0,
-            config.z_reflection
-        ),
-        size=mp.Vector3(
-            TRL_X_size,
-            TRL_Y_size,
-            0
-        )
-    )
-
-    tran_fr = mp.FluxRegion(
-        center=mp.Vector3(
-            0,
-            0,
-            config.z_transmission
-        ),
-        size=mp.Vector3(
-            TRL_X_size,
-            TRL_Y_size,
-            0
-        )
-    )
-    return {
-        "monitors": {
-            "refl": sim.add_flux(
-                config.frequency,
-                config.frequency_width,
-                config.nfreq,
-                refl_fr
-            ),
-            "tran": sim.add_flux(
-                config.frequency,
-                config.frequency_width,
-                config.nfreq,
-                tran_fr
-            ),
-        },
-        "metadata": {
-            "x_size": TRL_X_size,
-            "y_size": TRL_Y_size,
-            "z_reflection": config.z_reflection,
-            "z_transmission": config.z_transmission,
-        }
-    }
-
-def load_TRL(path):
-    """
-    Load cached TRL data.
-    """
-    results = {
-        "monitors": {},
-    }
-
-    for name in ["refl", "tran"]:
-
-        npz = np.load(
-            os.path.join(path, f"{name}.npz")
-        )
-
-        with open(
-            os.path.join(path, f"{name}_flux_data.pkl"),
-            "rb"
-        ) as f:
-
-            flux_data = pickle.load(f)
-
-        results["monitors"][name] = {
-            "flux": npz["flux"],
-            "freqs": npz["freqs"],
-            "flux_data": flux_data,
-        }
+        if sim_substrate is not None and sim_antenna is not None:
+            TRL_difference = compute_difference_spectra(
+                TRL_antenna,
+                TRL_substrate,
+                keys=("R", "T", "L"),
+                save_path=config.path_to_save,
+                save_name="TRL_antenna_minus_substrate",
+            )
 
     return results
 
-def compute_TRL(
-    reference,
-    structure,
+def compute_difference_spectra(
+    spectra1,
+    spectra2,
+    keys=("R", "T", "L"),
     save_path=None,
-    save_name="TRL",
+    save_name="difference",
 ):
     """
-    Compute reflection, transmission and loss spectra.
+    Compute difference between two spectra sets.
 
     Parameters
     ----------
-    reference : dict
-        Reference TRL cache, usually empty structure.
+    spectra1 : dict
+        First spectra dictionary.
 
-    structure : dict
-        Structure TRL cache.
+    spectra2 : dict
+        Second spectra dictionary.
+
+    keys : iterable
+        Keys to subtract.
 
     save_path : str or None
         Output directory.
 
     save_name : str
-        Prefix for saved files.
+        Prefix of output files.
 
     Returns
     -------
     dict
-        {
-            "wavelength": ...,
-            "R": ...,
-            "T": ...,
-            "L": ...,
-        }
     """
 
     if not mp.am_master():
         return
 
-    # =====================================================
-    # LOAD DATA
-    # =====================================================
-
-    incident_flux = np.asarray(
-        reference["monitors"]["tran"]["flux"]
+    frequency = np.asarray(
+        spectra1["frequency"]
     )
 
-    refl_flux = np.asarray(
-        structure["monitors"]["refl"]["flux"]
+    wavelength = np.asarray(
+        spectra1["wavelength"]
     )
-
-    tran_flux = np.asarray(
-        structure["monitors"]["tran"]["flux"]
-    )
-
-    flux_freqs = np.asarray(
-        structure["monitors"]["tran"]["freqs"]
-    )
-
-    # =====================================================
-    # WAVELENGTH
-    # =====================================================
-
-    wavelength = 1.0 / flux_freqs
-
-    # =====================================================
-    # R T L
-    # =====================================================
-
-    R = -refl_flux / incident_flux
-    T = tran_flux / incident_flux
-    L = 1.0 - R - T
 
     results = {
-        "frequency": flux_freqs,
+        "frequency": frequency,
         "wavelength": wavelength,
-        "R": R,
-        "T": T,
-        "L": L,
     }
+
+    # =====================================================
+    # DIFFERENCES
+    # =====================================================
+
+    for key in keys:
+
+        results[key] = (
+            np.asarray(spectra1[key])
+            - np.asarray(spectra2[key])
+        )
 
     # =====================================================
     # SAVE
@@ -2456,457 +2363,89 @@ def compute_TRL(
 
     if save_path is not None:
 
-        trl_dir = os.path.join(
+        diff_dir = os.path.join(
             save_path,
-            "TRL",
+            "DIFFERENCE",
         )
 
         os.makedirs(
-            trl_dir,
+            diff_dir,
             exist_ok=True,
         )
 
-        data = np.column_stack(
-            [
-                flux_freqs,
-                wavelength,
-                R,
-                T,
-                L,
-            ]
-        )
+        columns = [
+            frequency,
+            wavelength,
+        ]
+
+        header = [
+            "frequency",
+            "wavelength",
+        ]
+
+        for key in keys:
+            columns.append(results[key])
+            header.append(f"d{key}")
 
         np.savetxt(
             os.path.join(
-                trl_dir,
+                diff_dir,
                 f"{save_name}.txt",
             ),
-            data,
-            header="frequency wavelength R T L",
+            np.column_stack(columns),
+            header=" ".join(header),
         )
 
         np.savez(
             os.path.join(
-                trl_dir,
+                diff_dir,
                 f"{save_name}.npz",
             ),
-            frequency=flux_freqs,
-            wavelength=wavelength,
-            R=R,
-            T=T,
-            L=L,
+            **results,
         )
 
+        # wavelength plot
         multi_line_plotter_same_axes(
-            xdata_list=[wavelength, wavelength, wavelength],
-            ydata_list=[R,T,L],
-            labels=["R","T","L"],
-            colors=["blue","red","green"],
-            linestyles=["-","--","-."],
+            xdata_list=[
+                wavelength
+                for _ in keys
+            ],
+            ydata_list=[
+                results[k]
+                for k in keys
+            ],
+            labels=[
+                f"Δ{k}"
+                for k in keys
+            ],
             xlabel="Wavelength [μm]",
-            ylabel="Fraction",
-            title=f"{save_name} vs wavelength",
+            ylabel="Difference",
+            title=save_name,
             legend=True,
-            save_path=trl_dir,
+            save_path=diff_dir,
             save_name=f"{save_name}_lambda.png",
         )
-        
+
+        # frequency plot
         multi_line_plotter_same_axes(
-            xdata_list=[flux_freqs,flux_freqs,flux_freqs],
-            ydata_list=[R,T,L],
-            labels=["R","T","L"],
-            colors=["blue","red","green"],
-            linestyles=["-","--","-."],
+            xdata_list=[
+                frequency
+                for _ in keys
+            ],
+            ydata_list=[
+                results[k]
+                for k in keys
+            ],
+            labels=[
+                f"Δ{k}"
+                for k in keys
+            ],
             xlabel="Frequency [1/μm]",
-            ylabel="Fraction",
-            title=f"{save_name} vs frequency",
+            ylabel="Difference",
+            title=save_name,
             legend=True,
-            save_path=trl_dir,
+            save_path=diff_dir,
             save_name=f"{save_name}_frequency.png",
         )
-        
+
     return results
-    
-def save_cache_metadata(
-            cache_dir,
-            config,
-            structure_name,
-            TRL_monitors=None,
-            scattering_monitors=None,
-            dft_monitors=None,
-        ):
-    """
-    Save simulation metadata required for cache validation.
-
-    Parameters
-    ----------
-    cache_dir : str
-        Path to cache/<structure_name>.
-
-    config : object
-        Simulation configuration.
-
-    structure_name : str
-        Name of simulated structure ("empty", "substrate", "antenna", ...).
-
-    TRL_monitors : dict, optional
-        Dictionary returned by setup_TRL_monitors().
-
-    scattering_monitors : dict, optional
-        Reserved for future use.
-
-    dft_monitors : dict, optional
-        Reserved for future use.
-    """
-
-    def r(x):
-        return round(float(x), 10)
-
-    metadata = {
-        # =====================================================
-        # CACHE
-        # =====================================================
-        "structure": structure_name,
-
-        # =====================================================
-        # COMPUTATIONAL CELL
-        # =====================================================
-        "cell_size": [r(v) for v in config.cell_size],
-        "resolution": config.resolution,
-
-        # =====================================================
-        # SOURCE
-        # =====================================================
-        "frequency": r(config.frequency),
-        "frequency_width": r(config.frequency_width),
-        "nfreq": config.nfreq,
-    }
-
-    # =====================================================
-    # TRL
-    # =====================================================
-    if TRL_monitors is not None:
-        metadata["TRL"] = {
-            "x_size": r(TRL_monitors["metadata"]["x_size"]),
-            "y_size": r(TRL_monitors["metadata"]["y_size"]),
-            "z_reflection": r(TRL_monitors["metadata"]["z_reflection"]),
-            "z_transmission": r(TRL_monitors["metadata"]["z_transmission"]),
-        }
-
-    # =====================================================
-    # SCATTERING (future)
-    # =====================================================
-    if scattering_monitors is not None:
-        metadata["SCATTERING"] = scattering_monitors["metadata"]
-
-    # =====================================================
-    # DFT (future)
-    # =====================================================
-    if dft_monitors is not None:
-        metadata["DFT"] = dft_monitors["metadata"]
-
-    with open(
-        os.path.join(cache_dir, "metadata.json"),
-        "w",
-        encoding="utf-8",
-    ) as f:
-
-        json.dump(
-            metadata,
-            f,
-            indent=4,
-        )
-
-def load_metadata(path):
-    """
-    Load cache metadata.
-    """
-
-    with open(
-        os.path.join(path, "metadata.json"),
-        "r",
-        encoding="utf-8",
-    ) as f:
-
-        return json.load(f)
-
-def load_cache(
-    path,
-    TRL=False,
-    scattering=False,
-    dft=False,
-    harminv=False,
-):
-    """
-    Load cached simulation data.
-
-    Parameters
-    ----------
-    path : str
-        Path to structure cache directory, e.g.
-        ".../cache/empty"
-
-    TRL : bool
-        Load TRL cache.
-
-    scattering : bool
-        Load scattering cache.
-
-    dft : bool
-        Load DFT cache.
-
-    harminv : bool
-        Load Harminv cache.
-
-    Returns
-    -------
-    dict
-        Loaded cache.
-    """
-
-    # =====================================================
-    # CACHE DIRECTORY
-    # =====================================================
-
-    if not os.path.isdir(path):
-        raise FileNotFoundError(
-            f"Cache directory does not exist:\n{path}"
-        )
-
-    cache = {
-        "metadata": None,
-        "TRL": None,
-        "SCATTERING": None,
-        "DFT": None,
-        "HARMINV": None,
-    }
-
-    # =====================================================
-    # METADATA (required)
-    # =====================================================
-
-    metadata_path = os.path.join(path, "metadata.json")
-
-    if not os.path.isfile(metadata_path):
-        raise FileNotFoundError(
-            f"metadata.json not found:\n{metadata_path}"
-        )
-
-    cache["metadata"] = load_metadata(path)
-
-    # =====================================================
-    # TRL
-    # =====================================================
-
-    if TRL:
-
-        trl_path = os.path.join(path, "TRL")
-
-        if not os.path.isdir(trl_path):
-            raise FileNotFoundError(
-                f"TRL cache not found:\n{trl_path}"
-            )
-
-        cache["TRL"] = load_TRL(trl_path)
-
-    # =====================================================
-    # SCATTERING
-    # =====================================================
-
-    if scattering:
-
-        scat_path = os.path.join(path, "SCATTERING")
-
-        if not os.path.isdir(scat_path):
-            raise FileNotFoundError(
-                f"Scattering cache not found:\n{scat_path}"
-            )
-
-        # cache["SCATTERING"] = load_scattering(scat_path)
-
-    # =====================================================
-    # DFT
-    # =====================================================
-
-    if dft:
-
-        dft_path = os.path.join(path, "DFT")
-
-        if not os.path.isdir(dft_path):
-            raise FileNotFoundError(
-                f"DFT cache not found:\n{dft_path}"
-            )
-
-        # cache["DFT"] = load_DFT(dft_path)
-
-    # =====================================================
-    # HARMINV
-    # =====================================================
-
-    if harminv:
-
-        harminv_path = os.path.join(path, "HARMINV")
-
-        if not os.path.isdir(harminv_path):
-            raise FileNotFoundError(
-                f"Harminv cache not found:\n{harminv_path}"
-            )
-
-        # cache["HARMINV"] = load_harminv(harminv_path)
-
-    print("\n=======================================")
-    print("CACHE WAS LOADED SUCCESSFULLY")
-    print(f"Path: {path}")
-    print("=======================================\n")
-
-    return cache
-
-def validate_cache(
-    metadata,
-    config,
-    TRL=False,
-    TRL_X_size=None,
-    TRL_Y_size=None,
-    scattering=False,
-    dft=False,
-    harminv=False,
-):
-    """
-    Validate cache metadata against current simulation config.
-
-    Parameters
-    ----------
-    metadata : dict
-        Cache metadata loaded from metadata.json.
-
-    config : SimulationConfig
-        Current simulation configuration.
-
-    Raises
-    ------
-    ValueError
-        If cache is incompatible.
-    """
-
-    atol = 1e-12
-
-    # =====================================================
-    # CELL SIZE
-    # =====================================================
-    if not np.allclose(
-        metadata["cell_size"],
-        config.cell_size,
-        atol=atol,
-    ):
-        raise ValueError(
-            "Cache validation failed:\n"
-            f"cell_size mismatch\n"
-            f"cache   : {metadata['cell_size']}\n"
-            f"current : {list(config.cell_size)}"
-        )
-
-    # =====================================================
-    # RESOLUTION
-    # =====================================================
-    if metadata["resolution"] != config.resolution:
-        raise ValueError(
-            "Cache validation failed:\n"
-            f"resolution mismatch\n"
-            f"cache   : {metadata['resolution']}\n"
-            f"current : {config.resolution}"
-        )
-
-    # =====================================================
-    # FREQUENCY
-    # =====================================================
-    if not np.isclose(
-        metadata["frequency"],
-        config.frequency,
-        atol=atol,
-    ):
-        raise ValueError(
-            "Cache validation failed:\n"
-            f"frequency mismatch\n"
-            f"cache   : {metadata['frequency']}\n"
-            f"current : {config.frequency}"
-        )
-
-    # =====================================================
-    # FREQUENCY WIDTH
-    # =====================================================
-    if not np.isclose(
-        metadata["frequency_width"],
-        config.frequency_width,
-        atol=atol,
-    ):
-        raise ValueError(
-            "Cache validation failed:\n"
-            f"frequency_width mismatch\n"
-            f"cache   : {metadata['frequency_width']}\n"
-            f"current : {config.frequency_width}"
-        )
-
-    # =====================================================
-    # NFREQ
-    # =====================================================
-    if metadata["nfreq"] != config.nfreq:
-        raise ValueError(
-            "Cache validation failed:\n"
-            f"nfreq mismatch\n"
-            f"cache   : {metadata['nfreq']}\n"
-            f"current : {config.nfreq}"
-        )
-
-    # =====================================================
-    # TRL
-    # =====================================================
-    if TRL:
-        if TRL_X_size is None:
-            TRL_X_size = config.src_size[0]
-        
-        if TRL_Y_size is None:
-            TRL_Y_size = config.src_size[1]
-
-        if "TRL" not in metadata:
-            raise ValueError(
-                "Cache validation failed:\n"
-                "TRL metadata not found."
-            )
-
-        trl = metadata["TRL"]
-
-        checks = {
-            "x_size": TRL_X_size,
-            "y_size": TRL_Y_size,
-            "z_reflection": config.z_reflection,
-            "z_transmission": config.z_transmission,
-        }
-
-        for key, current in checks.items():
-
-            if not np.isclose(
-                trl[key],
-                current,
-                atol=1e-12,
-            ):
-                raise ValueError(
-                    "Cache validation failed:\n"
-                    f"TRL {key} mismatch\n"
-                    f"cache   : {trl[key]}\n"
-                    f"current : {current}"
-                )
-    # =====================================================
-    # FUTURE MODULES
-    # =====================================================
-    if scattering:
-        pass
-
-    if dft:
-        pass
-
-    if harminv:
-        pass
-
-    print("\n=======================================")
-    print("CACHE VALIDATION PASSED")
-    print("=======================================\n")
