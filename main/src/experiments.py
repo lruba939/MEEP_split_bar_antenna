@@ -15,7 +15,7 @@ xm = 1000
 mp.Simulation.eps_averaging = False
 
 def bowtie_substrate_experiment(material_name, COMMENT=None):
-    # =====================================================
+    # =====================================================  
     config = SimulationConfig()
 
     config.resolution = 100
@@ -108,6 +108,7 @@ def bowtie_substrate_experiment(material_name, COMMENT=None):
         symmetries=config.symmetries,
         dimensions=3
         )
+
     # =====================================================
     SIM_NAME = build_folder_name(
         structure="bowtie",
@@ -121,6 +122,13 @@ def bowtie_substrate_experiment(material_name, COMMENT=None):
     )
 
     config.path_to_save, config.animations_folder_path = create_directory(SIM_NAME)
+
+    ########################
+    log_system_usage(
+        config.path_to_save,
+        "after_mp.Simulation",
+    )
+    #######################
     # =====================================================
     save_and_show_config(config, [Top, substrate], COMMENT=COMMENT)
     # =====================================================
@@ -188,6 +196,12 @@ def bowtie_substrate_experiment(material_name, COMMENT=None):
         # dft_gap_spectrum=True,
         # harminv=True,
     )
+    ########################
+    log_system_usage(
+        config.path_to_save,
+        "END",
+    )
+    #######################
     return 0
 
 def bowtie_big_substrate_experiment(material_name):

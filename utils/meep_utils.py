@@ -7,6 +7,7 @@ import json
 
 from visualization.plotter import *
 from utils.logger import append_time_to_file
+from utils.sys_utils import *
 from utils.simulation.cache import *
 from utils.simulation.trl import *
 from utils.simulation.scattering import *
@@ -1964,6 +1965,12 @@ def run_structure(
         scattering_monitors=scattering_monitors,
         dft_monitors=dft_monitors,
     )
+    ########################
+    log_system_usage(
+        config.path_to_save,
+        "save_cache_metadata",
+    )
+    #######################
 
     if mp.am_master():
         print(f"Running structure: {structure_name}")
@@ -1997,6 +2004,12 @@ def run_structure(
     # =====================================================
     # MAIN SIMULATION
     # =====================================================
+    ########################
+    log_system_usage(
+        config.path_to_save,
+        "befor_collect",
+    )
+    #######################
     sim = collect_fields_with_output(
         sim,
         volumes=planes,
@@ -2009,14 +2022,18 @@ def run_structure(
         calc_Dpwr=calc_DPWR,
         extra_run_functions=extra_run_functions,
     )
-
+    ########################
+    log_system_usage(
+        config.path_to_save,
+        "after_collect",
+    )
+    #######################
     results = {}
 
     # =====================================================
     # TRL
     # =====================================================
     if TRL and TRL_monitors:
-
         results["TRL"] = {
             "monitors": {},
             "metadata": TRL_monitors["metadata"],
@@ -2061,26 +2078,32 @@ def run_structure(
                 "wb"
             ) as f:
                 pickle.dump(flux_data, f)
+
     # =====================================================
     # SCATTERING
     # =====================================================
     if scattering and scattering_monitors:
 
-        results["scattering"] = {}
+        results["SCATTERING"] = {
+            "metadata": scattering_monitors["metadata"],
+            "monitors": {},
+        }
 
-        for i, monitor in enumerate(
-            scattering_monitors
-        ):
+        for name, monitor in scattering_monitors["monitors"].items():
 
-            results["scattering"][f"face_{i}"] = {
-                "flux": np.asarray(
-                    mp.get_fluxes(monitor)
-                ),
-                "flux_data": sim.get_flux_data(
-                    monitor
-                )
+            flux = np.asarray(
+                mp.get_fluxes(monitor)
+            )
+
+            flux_data = sim.get_flux_data(
+                monitor
+            )
+
+            results["SCATTERING"]["monitors"][name] = {
+                "flux": flux,
+                "flux_data": flux_data,
             }
-
+            
     # =====================================================
     # DFT
     # =====================================================
@@ -2180,6 +2203,12 @@ def compute_fields_2(
     empty_cache = None
     
     if empty_from_cache is not None:    
+        ########################
+        log_system_usage(
+            config.path_to_save,
+            "empty_load",
+        )
+        #######################
         results["empty"] = load_cache(path=empty_from_cache, TRL=TRL, scattering=scattering, dft=dft_gap_spectrum, harminv=harminv)
         validate_cache(
             metadata=results["empty"]["metadata"],
@@ -2193,7 +2222,12 @@ def compute_fields_2(
         )
         
     elif sim_empty is not None:
-    
+        ########################
+        log_system_usage(
+            config.path_to_save,
+            "empty_start",
+        )
+        #######################    
         # Empty planes
         empty_planes = {
             f"{name}-empty": vol
@@ -2220,6 +2254,13 @@ def compute_fields_2(
                 padding_perc=scattering_padding_perc,
                 extra_padding_nm=scattering_extra_padding_nm,
             )
+
+        ########################
+        log_system_usage(
+            config.path_to_save,
+            "empty_monitores",
+        )
+        #######################
     
         results["empty"] = run_structure(
             sim=sim_empty,
@@ -2242,11 +2283,24 @@ def compute_fields_2(
 
             harminv=False,
         )
+
+        ########################
+        log_system_usage(
+            config.path_to_save,
+            "empty_after_run_structure",
+        )
+        #######################
     
     # ============================================================
     # SUBSTRATE
     # ============================================================
     if sim_substrate is not None:
+        ########################
+        log_system_usage(
+            config.path_to_save,
+            "substrate_start",
+        )
+        #######################
         # Transmitance-Reflectance-Loss (TRL)
         substrate_TRL_monitors = None
         if TRL is True:
@@ -2267,6 +2321,13 @@ def compute_fields_2(
                 padding_perc=scattering_padding_perc,
                 extra_padding_nm=scattering_extra_padding_nm,
             )
+
+        ########################
+        log_system_usage(
+            config.path_to_save,
+            "substrate_monitores",
+        )
+        #######################
 
         results["substrate"] = run_structure(
             sim=sim_substrate,
@@ -2291,11 +2352,23 @@ def compute_fields_2(
             harminv=harminv,
             harminv_objects=harminv_objects,
         )
-
+        ########################
+        log_system_usage(
+            config.path_to_save,
+            "substrate_after_run_structure",
+        )
+        #######################
+        
     # ============================================================
     # ANTENNA
     # ============================================================
     if sim_antenna is not None:
+        ########################
+        log_system_usage(
+            config.path_to_save,
+            "antenna_start",
+        )
+        #######################
         # Transmitance-Reflectance-Loss (TRL)
         antenna_TRL_monitors = None
         if TRL is True:
@@ -2315,7 +2388,13 @@ def compute_fields_2(
                 padding_perc=scattering_padding_perc,
                 extra_padding_nm=scattering_extra_padding_nm,
             )
-
+        ########################
+        log_system_usage(
+            config.path_to_save,
+            "antenna_monitores",
+        )
+        #######################
+        
         results["antenna"] = run_structure(
             sim=sim_antenna,
             structure_name="antenna",
@@ -2339,27 +2418,63 @@ def compute_fields_2(
             harminv=harminv,
             harminv_objects=harminv_objects,
         )
-
+        ########################
+        log_system_usage(
+            config.path_to_save,
+            "antenna_after_run_structure",
+        )
+        #######################
+        
     # ============================================================
     # ANALYSIS
     # ============================================================
     if TRL is True:
         if sim_substrate is not None:
+            ########################
+            log_system_usage(
+                config.path_to_save,
+                "TRL_substrate_start",
+            )
+            #######################
             TRL_substrate = compute_TRL(
                 reference=results["empty"]["TRL"],
                 structure=results["substrate"]["TRL"],
                 save_path=config.path_to_save,
                 save_name="TRL_substrate",
             )
+            ########################
+            log_system_usage(
+                config.path_to_save,
+                "TRL_substrate_end",
+            )
+            #######################
         if sim_antenna is not None:
+            ########################
+            log_system_usage(
+                config.path_to_save,
+                "TRL_antenna_start",
+            )
+            #######################
             TRL_antenna = compute_TRL(
                 reference=results["empty"]["TRL"],
                 structure=results["antenna"]["TRL"],
                 save_path=config.path_to_save,
                 save_name="TRL_antenna",
             )
+            ########################
+            log_system_usage(
+                config.path_to_save,
+                "TRL_antenna_end",
+            )
+            #######################
 
         if sim_substrate is not None and sim_antenna is not None:
+            ########################
+            log_system_usage(
+                config.path_to_save,
+                "TRL_difference_start",
+            )
+            #######################
             TRL_difference = compute_difference_spectra(
                 TRL_antenna,
                 TRL_substrate,
@@ -2367,6 +2482,12 @@ def compute_fields_2(
                 save_path=config.path_to_save,
                 save_name="TRL_antenna_minus_substrate",
             )
+            ########################
+            log_system_usage(
+                config.path_to_save,
+                "TRL_difference_end",
+            )
+            #######################
 
     return results
 

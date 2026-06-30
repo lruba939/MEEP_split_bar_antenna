@@ -1,9 +1,5 @@
-# from ..main.src import params
 import meep as mp
 import numpy as np
-
-# inicialize singleton of all parameters
-# p = params.SimParams()
 
 def make_cell(x=None, y=None, z=None, config=None):
     if config is not None:
