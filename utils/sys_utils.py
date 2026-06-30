@@ -500,7 +500,7 @@ def update_resource_plots(logfile):
     plt.xlabel("Elapsed time [s]")
     plt.ylabel("Memory [GB]")
     plt.title("Process memory")
-    plt.legend()
+    plt.legend(loc="best")
     plt.grid()
 
     plt.savefig(
@@ -546,7 +546,7 @@ def update_resource_plots(logfile):
     plt.xlabel("Elapsed time [s]")
     plt.ylabel("Memory [GB]")
     plt.title("System memory")
-    plt.legend()
+    plt.legend(loc="best")
     plt.grid()
 
     plt.savefig(
@@ -581,7 +581,7 @@ def update_resource_plots(logfile):
     plt.xlabel("Elapsed time [s]")
     plt.ylabel("CPU [%]")
     plt.title("CPU usage")
-    plt.legend()
+    plt.legend(loc="best")
     plt.grid()
 
     plt.savefig(
@@ -599,7 +599,7 @@ def update_resource_plots(logfile):
     # STAGES
     # =====================================================
 
-    plt.figure(figsize=(10,4))
+    plt.figure(figsize=(12,8))
 
     plt.plot(
         x,
@@ -614,6 +614,8 @@ def update_resource_plots(logfile):
 
     plt.xlabel("Elapsed time [s]")
     plt.title("Simulation stages")
+
+    plt.grid("major")
 
     plt.savefig(
         os.path.join(

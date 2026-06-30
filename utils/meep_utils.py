@@ -2076,6 +2076,12 @@ def run_structure(
                 "flux_data": flux_data,
             }
 
+            ########################
+            log_system_usage(
+                config.path_to_save,
+                "start_save_npz_files",
+            )
+            #######################
             # save numpy data
             np.savez(
                 os.path.join(
@@ -2085,13 +2091,27 @@ def run_structure(
                 flux=flux,
                 freqs=freqs,
             )
-
+            ########################
+            log_system_usage(
+                config.path_to_save,
+                "start_save_pickle_files",
+            )
+            #######################
             # save pickle data            
-            with open(
-                os.path.join(trl_dir, f"{name}_flux_data.pkl"),
-                "wb"
-            ) as f:
-                pickle.dump(flux_data, f)
+            if mp.am_master():
+                with open(
+                    os.path.join(trl_dir, f"{name}_flux_data.pkl"),
+                    "wb"
+                ) as f:
+                    pickle.dump(flux_data, f, protocol=pickle.HIGHEST_PROTOCOL)
+
+            mp.all_wait()
+            ########################
+            log_system_usage(
+                config.path_to_save,
+                "TRL_saves_done",
+            )
+            #######################
 
     # =====================================================
     # SCATTERING
