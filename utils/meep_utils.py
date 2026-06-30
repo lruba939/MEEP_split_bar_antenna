@@ -72,6 +72,7 @@ def collect_fields_with_output(
     calc_H_fields=False,
     calc_Dpwr=False,
     extra_run_functions=None,
+    config=None,
 ):
     """
     Collect selected field data for multiple volumes in ONE sim.run().
@@ -230,7 +231,19 @@ def collect_fields_with_output(
     # --------------------------------------------------
     # Single sim.run()
     # --------------------------------------------------
+    ########################
+    log_system_usage(
+        config.path_to_save,
+        "start_sim.run()",
+    )
+    #######################
     sim.run(*run_actions, until=until)
+    ########################
+    log_system_usage(
+        config.path_to_save,
+        "end_sim.run()",
+    )
+    #######################
     return sim
 
 def enhancement_divided_by_maxes_arr(
@@ -2021,6 +2034,7 @@ def run_structure(
         calc_H_fields=calc_H,
         calc_Dpwr=calc_DPWR,
         extra_run_functions=extra_run_functions,
+        config=config,
     )
     ########################
     log_system_usage(

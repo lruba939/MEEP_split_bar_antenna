@@ -208,6 +208,8 @@ def log_system_usage(
     """
     Save current system and process resource usage.
     """
+    if not mp.am_master():
+        return
 
     # =====================================================
     # OUTPUT DIR
@@ -458,7 +460,8 @@ def update_resource_plots(logfile):
     Update monitoring plots after each log entry.
     """
 
-    import pandas as pd
+    if not mp.am_master():
+        return
 
     df = pd.read_csv(logfile)
 
