@@ -346,13 +346,13 @@ that allows one to calculate the half-wavelength of a dipole antenna and the eff
 ![effwave](Assets/eff_wave_novotny2007.png)
 
 ## To Do:
-- [ ] Load data for empty cell
 - [ ] Calcs for substrate and antenna-substrate system
 - [ ] Autosave source shape in Hz and um
 - [ ] Integrate Novotny (2007) calculations into the main code
 	- [ ] Take eps data from meep.materials for Novotny model
 
 ## Done:
+- [x] Load data for empty cell
 - [x] Add comments to experiment.txt
 - [x] Better dir namespace
 - [x] Add scattering calculations (DFT flux boxes)

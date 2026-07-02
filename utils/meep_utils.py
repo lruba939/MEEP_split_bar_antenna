@@ -2071,6 +2071,11 @@ def run_structure(
                 monitor
             )
 
+            sim.save_flux(
+                f"{name}_dft",
+                monitor,
+            )
+
             results["TRL"]["monitors"][name] = {
                 "flux": flux,
                 "freqs": freqs,
@@ -2092,21 +2097,21 @@ def run_structure(
                 flux=flux,
                 freqs=freqs,
             )
-            ########################
-            log_system_usage(
-                config.path_to_save,
-                "start_save_pickle_files",
-            )
-            #######################
-            # save pickle data            
-            if mp.am_master():
-                with open(
-                    os.path.join(trl_dir, f"{name}_flux_data.pkl"),
-                    "wb"
-                ) as f:
-                    pickle.dump(flux_data, f, protocol=pickle.HIGHEST_PROTOCOL)
-
-            mp.all_wait()
+#             ########################
+#             log_system_usage(
+#                 config.path_to_save,
+#                 "start_save_pickle_files",
+#             )
+#             #######################
+#             # save pickle data            
+#             if mp.am_master():
+#                 with open(
+#                     os.path.join(trl_dir, f"{name}_flux_data.pkl"),
+#                     "wb"
+#                 ) as f:
+#                     pickle.dump(flux_data, f, protocol=pickle.HIGHEST_PROTOCOL)
+# 
+#             mp.all_wait()
             ########################
             log_system_usage(
                 config.path_to_save,
@@ -2238,23 +2243,24 @@ def compute_fields_2(
     empty_cache = None
     
     if empty_from_cache is not None:    
-        ########################
-        log_system_usage(
-            config.path_to_save,
-            "empty_load",
-        )
-        #######################
-        results["empty"] = load_cache(path=empty_from_cache, TRL=TRL, scattering=scattering, dft=dft_gap_spectrum, harminv=harminv)
-        validate_cache(
-            metadata=results["empty"]["metadata"],
-            config=config,
-            TRL=TRL,
-            TRL_X_size=TRL_X_size,
-            TRL_Y_size=TRL_Y_size,
-            scattering=scattering,
-            dft=dft_gap_spectrum,
-            harminv=harminv,
-        )
+        # ########################
+        # log_system_usage(
+        #     config.path_to_save,
+        #     "empty_load",
+        # )
+        # #######################
+        # results["empty"] = load_cache(path=empty_from_cache, TRL=TRL, scattering=scattering, dft=dft_gap_spectrum, harminv=harminv)
+        # validate_cache(
+        #     metadata=results["empty"]["metadata"],
+        #     config=config,
+        #     TRL=TRL,
+        #     TRL_X_size=TRL_X_size,
+        #     TRL_Y_size=TRL_Y_size,
+        #     scattering=scattering,
+        #     dft=dft_gap_spectrum,
+        #     harminv=harminv,
+        # )
+        pass
         
     elif sim_empty is not None:
         ########################
@@ -2376,7 +2382,7 @@ def compute_fields_2(
 
             TRL=TRL,
             TRL_monitors=substrate_TRL_monitors,
-            TRL_reference=results["empty"]["TRL"],
+            # TRL_reference=results["empty"]["TRL"],
 
             scattering=scattering,
             scattering_monitors=substrate_scattering_monitors,
@@ -2442,7 +2448,7 @@ def compute_fields_2(
 
             TRL=TRL,
             TRL_monitors=antenna_TRL_monitors,
-            TRL_reference=results["empty"]["TRL"],
+            # TRL_reference=results["empty"]["TRL"],
 
             scattering=scattering,
             scattering_monitors=antenna_scattering_monitors,
@@ -2635,7 +2641,7 @@ def compute_difference_spectra(
             xdata_list=[wavelength for _ in keys],
             ydata_list=[results[k] for k in keys],
             labels=[f"Δ{k}"for k in keys],
-            colors=["blue","red","green"]
+            colors=["blue","red","green"],
             xlabel="Wavelength [μm]",
             ylabel="Difference",
             title=save_name,
@@ -2649,7 +2655,7 @@ def compute_difference_spectra(
             xdata_list=[frequency for _ in keys],
             ydata_list=[results[k] for k in keys],
             labels=[f"Δ{k}" for k in keys],
-            colors=["blue","red","green"]
+            colors=["blue","red","green"],
             xlabel="Frequency [1/μm]",
             ylabel="Difference",
             title=save_name,
