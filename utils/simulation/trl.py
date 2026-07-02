@@ -69,7 +69,7 @@ def load_TRL(path):
         "monitors": {},
     }
 
-    for name in ["refl", "tran"]:
+    for name in ["refl"]: #, "tran"
 
         npz = np.load(
             os.path.join(path, f"{name}.npz")
@@ -79,7 +79,6 @@ def load_TRL(path):
             os.path.join(path, f"{name}_flux_data.pkl"),
             "rb"
         ) as f:
-
             flux_data = pickle.load(f)
 
         results["monitors"][name] = {
@@ -87,6 +86,19 @@ def load_TRL(path):
             "freqs": npz["freqs"],
             "flux_data": flux_data,
         }
+
+    # fd = results["monitors"]["refl"]["flux_data"]
+    # 
+    # print(type(fd))
+    # print(dir(fd))
+    # print(type(fd.E))
+    # print(type(fd.H))
+    # 
+    # print(fd.E.shape)
+    # print(fd.H.shape)
+    # 
+    # print(fd.E.nbytes/1024**3)
+    # print(fd.H.nbytes/1024**3)
 
     return results
 

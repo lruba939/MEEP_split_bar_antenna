@@ -2014,6 +2014,7 @@ def run_structure(
             TRL_monitors["monitors"]["refl"],
             TRL_reference["monitors"]["refl"]["flux_data"],
         )
+
     # =====================================================
     # MAIN SIMULATION
     # =====================================================
@@ -2578,7 +2579,6 @@ def compute_difference_spectra(
     # =====================================================
 
     for key in keys:
-
         results[key] = (
             np.asarray(spectra1[key])
             - np.asarray(spectra2[key])
@@ -2589,7 +2589,6 @@ def compute_difference_spectra(
     # =====================================================
 
     if save_path is not None:
-
         diff_dir = os.path.join(
             save_path,
             "DIFFERENCE",
@@ -2633,18 +2632,10 @@ def compute_difference_spectra(
 
         # wavelength plot
         multi_line_plotter_same_axes(
-            xdata_list=[
-                wavelength
-                for _ in keys
-            ],
-            ydata_list=[
-                results[k]
-                for k in keys
-            ],
-            labels=[
-                f"Δ{k}"
-                for k in keys
-            ],
+            xdata_list=[wavelength for _ in keys],
+            ydata_list=[results[k] for k in keys],
+            labels=[f"Δ{k}"for k in keys],
+            colors=["blue","red","green"]
             xlabel="Wavelength [μm]",
             ylabel="Difference",
             title=save_name,
@@ -2655,24 +2646,46 @@ def compute_difference_spectra(
 
         # frequency plot
         multi_line_plotter_same_axes(
-            xdata_list=[
-                frequency
-                for _ in keys
-            ],
-            ydata_list=[
-                results[k]
-                for k in keys
-            ],
-            labels=[
-                f"Δ{k}"
-                for k in keys
-            ],
+            xdata_list=[frequency for _ in keys],
+            ydata_list=[results[k] for k in keys],
+            labels=[f"Δ{k}" for k in keys],
+            colors=["blue","red","green"]
             xlabel="Frequency [1/μm]",
             ylabel="Difference",
             title=save_name,
             legend=True,
             save_path=diff_dir,
             save_name=f"{save_name}_frequency.png",
+        )
+
+        # wavelength plot of components
+        multi_line_plotter_same_axes(
+            xdata_list = [wavelength for _ in keys for _ in range(2)],
+            ydata_list = [spectrum for k in keys for spectrum in (spectra1[k], spectra2[k])],
+            labels = [label for k in keys for label in (f"{k} (a)", f"{k} (s)")],
+            colors=["blue", "k", "red", "k", "green", "k"],
+            linestyles=["-", ":", "-", ":", "-", ":"],
+            xlabel="Wavelength [μm]",
+            ylabel="Difference",
+            title=save_name,
+            legend=True,
+            save_path=diff_dir,
+            save_name=f"{save_name}_wavelength_components.png",
+        )
+
+        # frequency plot of components
+        multi_line_plotter_same_axes(
+            xdata_list = [frequency for _ in keys for _ in range(2)],
+            ydata_list = [spectrum for k in keys for spectrum in (spectra1[k], spectra2[k])],
+            labels = [label for k in keys for label in (f"{k} (a)", f"{k} (s)")],
+            colors=["blue", "k", "red", "k", "green", "k"],
+            linestyles=["-", ":", "-", ":", "-", ":"],
+            xlabel="Frequency [1/μm]",
+            ylabel="Difference",
+            title=save_name,
+            legend=True,
+            save_path=diff_dir,
+            save_name=f"{save_name}_frequency_components.png",
         )
 
     return results
