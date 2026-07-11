@@ -136,7 +136,7 @@ def bowtie_substrate_experiment(
     )
     #######################
     # =====================================================
-    save_and_show_config(config, [Top, substrate], COMMENT=COMMENT, empty_cache=empty_cache, substrate_cache=substrate_cache, antenna_cache=antenna_cache)
+    save_and_show_config(config, [Top, substrate], COMMENT=COMMENT, empty_cache=empty_from_cache, substrate_cache=substrate_from_cache, antenna_cache=antenna_from_cache)
     # =====================================================
     print_task(1, "2D projections.")
     for sim, name_prefix in {
