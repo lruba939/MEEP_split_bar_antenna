@@ -234,7 +234,7 @@ def multi_line_plotter_same_axes(xdata_list, ydata_list, colors=None, linestyles
             ax.plot(xdata_list[i], ydata_list[i], label=label, color=color, linestyle=linestyle)
 
     if legend and labels is not None:
-        ax.legend()
+        ax.legend(loc="best")
 
     plt.tight_layout()
     if grid:
