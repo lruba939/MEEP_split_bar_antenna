@@ -15,13 +15,13 @@ xm = 1000
 mp.Simulation.eps_averaging = False
 
 def bowtie_substrate_experiment(material_name, COMMENT=None):
-    # =====================================================  
+    # =====================================================
     config = SimulationConfig()
 
-    config.resolution = 100
-    config.sim_time = 100 / xm
+    config.resolution = 500
+    config.sim_time = 25000 / xm
+    config.sim_time_step = 100 / xm
 
-    config.sim_time_step = 50 / xm
     config.lambda0 = 660 / xm
     config.frequency_width = 1.0
 
@@ -30,36 +30,37 @@ def bowtie_substrate_experiment(material_name, COMMENT=None):
     # =====================================================
     Top = BowTieEquilateral(
         gap=gap/xm,
-        length=100/xm, # <- to have about 100 nm in width
+        length=86.6/xm, # <- to have about 100 nm in width
         thickness=30/xm,
         radius=5/xm,
         material_name="Au",
         z_offset=0.0
     )
     substrate = Bar(
-        length=800/xm,
-        width=800/xm,
-        thickness=100/xm,
+        length=1000/xm,
+        width=1000/xm,
+        thickness=520/xm,
         material_name=material_name,
-        z_offset=-(30/2.0+100/2.0)/xm,
-        radius=12/xm,
+        z_offset=-(30/2.0+520/2.0)/xm,
+        radius=0/xm,
     )
 
     geometry_substrate = substrate.build_geometry()
     geometry_antenna = Top.build_geometry() + substrate.build_geometry()
 
-    config.pad = 80/xm
+    config.pad = 0
+    # config.pad = 80/xm
     config.pml = 350/xm
     config.cell_size = [
-        substrate.length + 2*config.pad + 2*config.pml,   # x
-        substrate.width + 2*config.pad + 2*config.pml,   # y
-        substrate.thickness+Top.thickness + 2*config.pad + 2*config.pml    # z
+        substrate.length,   # x
+        substrate.width,   # y
+        substrate.thickness+Top.thickness + 1.5*config.pml    # z
     ]
     cell = make_cell(config=config)
 
     config.src_size = [
-        substrate.length,  # x
-        substrate.width,  # y
+        Top.length*3,  # x
+        Top.length*3,  # y
         0.0 / xm    # z
     ]
 
@@ -69,7 +70,7 @@ def bowtie_substrate_experiment(material_name, COMMENT=None):
     config.src_center = [
         0.0,    # x
         0.0,    # y
-        config.cell_size[2]/2.0-1.15*config.pml  # z
+        config.cell_size[2]/2.0-1.05*config.pml  # z
     ]
 
     config.nfreq = 500
@@ -108,7 +109,6 @@ def bowtie_substrate_experiment(material_name, COMMENT=None):
         symmetries=config.symmetries,
         dimensions=3
         )
-
     # =====================================================
     SIM_NAME = build_folder_name(
         structure="bowtie",
@@ -177,9 +177,9 @@ def bowtie_substrate_experiment(material_name, COMMENT=None):
  
     compute_fields_2(
         sim_empty=sim_empty,
-        # sim_substrate=sim_substrate,
+        sim_substrate=sim_substrate,
         sim_antenna=sim_antenna,
-        # empty_from_cache="results/bowtie__lam-660__gap-6__L-100__T-30__R-5__ant-Au__sub-Ge__9/cache/empty/",
+        # empty_from_cache="results/bowtie__lam-660__gap-6__L-87__T-30__R-5__ant-Au__sub-Au__8/cache/empty/",
         volumes=antenna_vols,
         config=config,
 
@@ -190,8 +190,8 @@ def bowtie_substrate_experiment(material_name, COMMENT=None):
         # fluxes_X_size=substrate.length/2.0,
         # fluxes_Y_size=substrate.width/2.0,
 
-        scattering=True,
-        scattering_object=Top
+        # scattering=True,
+        # scattering_object=Top
 
         # dft_gap_spectrum=True,
         # harminv=True,

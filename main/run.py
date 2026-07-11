@@ -95,3 +95,8 @@ def run():
 
 if __name__ == "__main__":
     run()
+
+    mp.all_wait()
+
+    if mp.am_master():
+        print("\nEND\n")

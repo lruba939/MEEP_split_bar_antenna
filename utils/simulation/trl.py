@@ -1,7 +1,6 @@
 import meep as mp
 import numpy as np
-import os
-import pickle
+import os, h5py
 
 from visualization.plotter import *
 
@@ -61,7 +60,8 @@ def setup_TRL_monitors(sim, config, TRL_X_size=None, TRL_Y_size=None):
         }
     }
 
-def load_TRL(path):
+
+def load_TRL(path, DEBUG=False):
     """
     Load cached TRL data.
     """
@@ -87,18 +87,19 @@ def load_TRL(path):
             "flux_data": flux_data,
         }
 
-    # fd = results["monitors"]["refl"]["flux_data"]
-    # 
-    # print(type(fd))
-    # print(dir(fd))
-    # print(type(fd.E))
-    # print(type(fd.H))
-    # 
-    # print(fd.E.shape)
-    # print(fd.H.shape)
-    # 
-    # print(fd.E.nbytes/1024**3)
-    # print(fd.H.nbytes/1024**3)
+    if DEBUG:
+        fd = results["monitors"]["refl"]["flux_data"]
+        
+        print(type(fd))
+        print(dir(fd))
+        print(type(fd.E))
+        print(type(fd.H))
+        
+        print(fd.E.shape)
+        print(fd.H.shape)
+        
+        print(fd.E.nbytes/1024**3)
+        print(fd.H.nbytes/1024**3)
 
     return results
 

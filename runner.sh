@@ -3,11 +3,11 @@
 # ============================================
 # CONFIGURATION
 # ============================================
-NPROC=2
+NPROC=24
 
 EXPERIMENT="bowtie_substrate"
 SUBSTRATE="Au"
-COMMENT="Testing new source position"
+COMMENT="NEW TRL CALC: Test for 350 res with load minus"
 
 LOG_OUTPUT="output"
 LOG_ERROR="error"

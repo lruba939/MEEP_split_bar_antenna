@@ -2,7 +2,6 @@ import meep as mp
 from meep.materials import *
 import numpy as np
 import os
-import pickle
 import json
 
 from visualization.plotter import *
@@ -2097,21 +2096,6 @@ def run_structure(
                 flux=flux,
                 freqs=freqs,
             )
-#             ########################
-#             log_system_usage(
-#                 config.path_to_save,
-#                 "start_save_pickle_files",
-#             )
-#             #######################
-#             # save pickle data            
-#             if mp.am_master():
-#                 with open(
-#                     os.path.join(trl_dir, f"{name}_flux_data.pkl"),
-#                     "wb"
-#                 ) as f:
-#                     pickle.dump(flux_data, f, protocol=pickle.HIGHEST_PROTOCOL)
-# 
-#             mp.all_wait()
             ########################
             log_system_usage(
                 config.path_to_save,

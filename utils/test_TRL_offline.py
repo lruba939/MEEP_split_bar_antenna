@@ -8,8 +8,9 @@ import matplotlib.pyplot as plt
 # USER
 # =====================================================
 
-PATH = "results/bowtie__lam-660__gap-6__L-87__T-30__R-5__ant-Au__sub-Au__14/cache/"
+# PATH = "results/bowtie__lam-660__gap-6__L-87__T-30__R-5__ant-Au__sub-Au__14/cache/"
 PATH2 = "results/bowtie__lam-660__gap-6__L-87__T-30__R-5__ant-Au__sub-Au__3/cache/"
+PATH = "results/bowtie__lam-660__gap-6__L-87__T-30__R-5__ant-Au__sub-Au__15/cache/"
 
 Nfreq = 500
 
