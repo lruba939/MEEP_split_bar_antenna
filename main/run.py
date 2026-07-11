@@ -32,7 +32,7 @@ def run():
 
         mpirun -np 24 python main/run.py --experiment=bowtie_substrate --substrate=SiO2 --comment="Testing new source position"
 
-        mpirun -np 48 python main/run.py --experiment=bowtie_mir --substrate=Au
+        mpirun -np 48 python main/run.py --experiment=bowtie_mir --substrate=Au --empty_cache="results/bowtie__lam-660__gap-6__L-87__T-30__R-5__ant-Au__sub-Au__15/cache/empty/"
         """,
     formatter_class=argparse.RawDescriptionHelpFormatter
     )
@@ -53,6 +53,24 @@ def run():
         "--comment",
         default=None,
         help="Optional comment stored in experiment.txt"
+    )
+
+    parser.add_argument(
+        "--empty_cache",
+        default=None,
+        help="Path to cache/empty directory. If None, run simulation."
+    )
+
+    parser.add_argument(
+        "--substrate_cache",
+        default=None,
+        help="Path to cache/substrate directory. If None, run simulation."
+    )
+
+    parser.add_argument(
+        "--antenna_cache",
+        default=None,
+        help="Path to cache/antenna directory. If None, run simulation."
     )
 
     args = parser.parse_args()
@@ -89,7 +107,10 @@ def run():
 
     experiments[args.experiment](
         args.substrate,
-        COMMENT=args.comment
+        COMMENT=args.comment,
+        empty_from_cache=args.empty_cache,
+        substrate_from_cache=args.substrate_cache,
+        antenna_from_cache=args.antenna_cache
     )
 
 

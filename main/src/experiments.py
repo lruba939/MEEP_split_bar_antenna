@@ -14,7 +14,13 @@ from visualization.plotter import *
 xm = 1000
 mp.Simulation.eps_averaging = False
 
-def bowtie_substrate_experiment(material_name, COMMENT=None):
+def bowtie_substrate_experiment(
+    material_name,
+    COMMENT=None,
+    empty_from_cache=None,
+    substrate_from_cache=None,
+    antenna_from_cache=None
+    ):
     # =====================================================
     config = SimulationConfig()
 
@@ -130,7 +136,7 @@ def bowtie_substrate_experiment(material_name, COMMENT=None):
     )
     #######################
     # =====================================================
-    save_and_show_config(config, [Top, substrate], COMMENT=COMMENT)
+    save_and_show_config(config, [Top, substrate], COMMENT=COMMENT, empty_cache=empty_cache, substrate_cache=substrate_cache, antenna_cache=antenna_cache)
     # =====================================================
     print_task(1, "2D projections.")
     for sim, name_prefix in {
@@ -177,14 +183,14 @@ def bowtie_substrate_experiment(material_name, COMMENT=None):
  
     compute_fields_2(
         sim_empty=sim_empty,
-        empty_from_cache="results/bowtie__lam-660__gap-6__L-87__T-30__R-5__ant-Au__sub-Au__15/cache/empty/",
-
+        empty_from_cache=empty_from_cache,
+        
         sim_substrate=sim_substrate,
-        substrate_from_cache="results/bowtie__lam-660__gap-6__L-87__T-30__R-5__ant-Au__sub-Au__15/cache/substrate/",
-
+        substrate_from_cache=substrate_from_cache,
+        
         sim_antenna=sim_antenna,
-        antenna_from_cache="results/bowtie__lam-660__gap-6__L-87__T-30__R-5__ant-Au__sub-Au__15/cache/antenna/",
-
+        antenna_from_cache=antenna_from_cache,
+        
         volumes=antenna_vols,
         config=config,
 

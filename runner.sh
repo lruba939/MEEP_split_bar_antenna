@@ -8,6 +8,9 @@ NPROC=24
 EXPERIMENT="bowtie_substrate"
 SUBSTRATE="Au"
 COMMENT="NEW TRL CALC: Test for 350 res with load minus"
+EMPTY_CACHE="results/bowtie__lam-660__gap-6__L-87__T-30__R-5__ant-Au__sub-Au__15/cache/empty/"
+SUBSTRATE_CACHE="results/bowtie__lam-660__gap-6__L-87__T-30__R-5__ant-Au__sub-Au__15/cache/substrate/"
+ANTENNA_CACHE="results/bowtie__lam-660__gap-6__L-87__T-30__R-5__ant-Au__sub-Au__15/cache/antenna/"
 
 LOG_OUTPUT="output"
 LOG_ERROR="error"
@@ -32,6 +35,9 @@ mpirun -np "$NPROC" \
     --experiment="$EXPERIMENT" \
     --substrate="$SUBSTRATE" \
     --comment="$COMMENT" \
+    --empty_cache="$EMPTY_CACHE" \
+    --substrate_cache="$SUBSTRATE_CACHE" \
+    --antenna_cache="$ANTENNA_CACHE" \
     1> "$OUTFILE" \
     2> "$ERRFILE"
 

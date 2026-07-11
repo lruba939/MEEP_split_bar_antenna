@@ -7,7 +7,14 @@ from meep.materials import Au, Ti, SiO2, Pd
 # MAIN LOGGER FUNCTION
 # --------------------------------------------------------
 
-def save_and_show_config(config, antenna, COMMENT=None):
+def save_and_show_config(
+        config,
+        antenna,
+        COMMENT=None,
+        empty_cache=None,
+        substrate_cache=None,
+        antenna_cache=None,
+    ):
     show_experiment(config, antenna)
     save_experiment(config, antenna, COMMENT=COMMENT)
     append_time_to_file(config, prefix="Start time: ")
@@ -116,6 +123,9 @@ def save_experiment(config, antennas, filename=None, COMMENT=None):
         os.makedirs(config.path_to_save, exist_ok=True)
         os.makedirs(config.animations_folder_path, exist_ok=True)
 
+        def cache_status(path):
+            return "COMPUTED" if path is None else f"LOADED FROM\n{path}"
+        
         if not isinstance(antennas, (list, tuple)):
             antennas = [antennas]
 
@@ -128,6 +138,11 @@ def save_experiment(config, antennas, filename=None, COMMENT=None):
             f.write("#################################\n")
             f.write(f"{COMMENT}\n")
             f.write("#################################\n")
+            f.write("CACHE\n")
+            f.write("-" * 60 + "\n\n")
+            f.write(f"EMPTY:\n{cache_status(empty_cache)}\n\n")
+            f.write(f"SUBSTRATE:\n{cache_status(substrate_cache)}\n\n")
+            f.write(f"ANTENNA:\n{cache_status(antenna_cache)}\n\n")
 
             f.write("\n\n#################################\n")
             f.write("EXPERIMENT CONFIGURATION\n")
