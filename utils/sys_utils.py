@@ -28,57 +28,6 @@ def print_task(task_number, description=None):
         
         print("-\n-")
 
-# def create_directory_names(SIM_NAME):
-#     path_to_save = os.path.join("results", SIM_NAME)
-#     animations_folder_path = os.path.join(path_to_save, "animations")
-#     
-#     if mp.am_master():
-#         if not os.path.exists(path_to_save):
-#             os.makedirs(path_to_save)
-#         if not os.path.exists(animations_folder_path):
-#             os.makedirs(animations_folder_path)
-# 
-#         return path_to_save, animations_folder_path
-
-# def create_directory(SIM_NAME):
-#     # ==========================================
-#     # Select base directory
-#     # ==========================================
-#     if HPC:
-#         base_dir = os.environ["SCRATCH"]
-#     else:
-#         base_dir = os.getcwd()
-
-#     # ==========================================
-#     # Paths
-#     # ==========================================
-#     path_to_save = os.path.join(
-#         base_dir,
-#         "results",
-#         SIM_NAME
-#     )
-
-#     animations_folder_path = os.path.join(
-#         path_to_save,
-#         "animations"
-#     )
-
-#     # ==========================================
-#     # Create directories only on master process
-#     # ==========================================
-#     if mp.am_master():
-
-#         os.makedirs(path_to_save, exist_ok=True)
-#         os.makedirs(animations_folder_path, exist_ok=True)
-
-#         print("=" * 60)
-#         print(f"HPC mode: {HPC}")
-#         print(f"Saving results to:")
-#         print(path_to_save)
-#         print("=" * 60)
-
-#     return path_to_save, animations_folder_path
-
 def create_directory(SIM_NAME):
     """
     Creates unique simulation folder.
@@ -330,16 +279,11 @@ def log_system_usage(
     # =====================================================
     # TIME
     # =====================================================
-
-    elapsed = (
-        time.time()
-        - PROGRAM_START_TIME
-    )
+    elapsed = (time.time() - PROGRAM_START_TIME)
 
     # =====================================================
     # DATA
     # =====================================================
-
     row = {
 
         "timestamp":
@@ -409,7 +353,6 @@ def log_system_usage(
     # =====================================================
     # SAVE
     # =====================================================
-
     write_header = (
         not os.path.isfile(
             logfile
@@ -435,7 +378,6 @@ def log_system_usage(
     # =====================================================
     # PRINT
     # =====================================================
-
     print(
         f"[RESOURCE] "
         f"{stage:25s} "
@@ -475,7 +417,6 @@ def update_resource_plots(logfile):
     # =====================================================
     # RAM PROCESS
     # =====================================================
-
     plt.figure(figsize=(8,5))
 
     plt.plot(
@@ -517,7 +458,6 @@ def update_resource_plots(logfile):
     # =====================================================
     # SYSTEM RAM
     # =====================================================
-
     plt.figure(figsize=(8,5))
 
     plt.plot(
@@ -563,7 +503,6 @@ def update_resource_plots(logfile):
     # =====================================================
     # CPU
     # =====================================================
-
     plt.figure(figsize=(8,5))
 
     plt.plot(
@@ -598,7 +537,6 @@ def update_resource_plots(logfile):
     # =====================================================
     # STAGES
     # =====================================================
-
     plt.figure(figsize=(12,8))
 
     plt.plot(
@@ -625,5 +563,4 @@ def update_resource_plots(logfile):
         dpi=200,
         bbox_inches="tight",
     )
-
     plt.close()

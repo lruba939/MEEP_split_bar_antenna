@@ -1632,7 +1632,7 @@ def run_structure(
 
     os.makedirs(cache_dir, exist_ok=True)
 
-    save_cache_metadata(
+    save_metadata(
         cache_dir=cache_dir,
         config=config,
         structure_name=structure_name,
@@ -1716,40 +1716,42 @@ def run_structure(
     # GAP DFT
     # =====================================================
     if dft_gap_spectrum and dft_gap_monitors:
-        dft_dir = os.path.join(cache_dir, "GAP_DFT")
+        # dft_dir = os.path.join(cache_dir, "GAP_DFT")
 
-        os.makedirs(dft_dir, exist_ok=True)
+        # os.makedirs(dft_dir, exist_ok=True)
 
-        for name, monitor in dft_gap_monitors.items():
-            for comp_name, comp in (
-                ("Ex", mp.Ex),
-                ("Ey", mp.Ey),
-                ("Ez", mp.Ez),
-            ):
-                np.save(
-                    os.path.join(dft_dir,f"{name}_{comp_name}.npy"),
-                    np.array([
-                        sim.get_dft_array(
-                            monitor,
-                            comp,
-                            i,
-                        )
-                        for i in range(config.nfreq)
-                    ]),
-                )
+        # for name, monitor in dft_gap_monitors.items():
+        #     for comp_name, comp in (
+        #         ("Ex", mp.Ex),
+        #         ("Ey", mp.Ey),
+        #         ("Ez", mp.Ez),
+        #     ):
+        #         np.save(
+        #             os.path.join(dft_dir,f"{name}_{comp_name}.npy"),
+        #             np.array([
+        #                 sim.get_dft_array(
+        #                     monitor,
+        #                     comp,
+        #                     i,
+        #                 )
+        #                 for i in range(config.nfreq)
+        #             ]),
+        #         )
+        pass
 
     # =====================================================
     # HARMINV
     # =====================================================
     if harminv and harminv_objects:
-        harminv_dir = os.path.join( cache_dir, "HARMINV")
+        # harminv_dir = os.path.join( cache_dir, "HARMINV")
 
-        os.makedirs(harminv_dir, exist_ok=True)
+        # os.makedirs(harminv_dir, exist_ok=True)
 
-        save_harminv_raw(
-            harminv_objects,
-            harminv_dir,
-        )
+        # save_harminv_raw(
+        #     harminv_objects,
+        #     harminv_dir,
+        # )
+        pass
 
     if mp.am_master():
         print(f"Finished structure: {structure_name}")

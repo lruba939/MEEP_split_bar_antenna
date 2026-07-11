@@ -2,8 +2,9 @@ import meep as mp
 import numpy as np
 import os, h5py
 
-from visualization.plotter import *
 from utils.field_utils import *
+
+from visualization.plotter import *
 
 def setup_TRL_monitors(sim, config, TRL_X_size=None, TRL_Y_size=None):
 

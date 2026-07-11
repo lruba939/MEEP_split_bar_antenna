@@ -3,8 +3,9 @@ import os
 import numpy as np
 
 from utils.simulation.trl import *
+from utils.simulation.scattering import *
 
-def save_cache_metadata(
+def save_metadata(
             cache_dir,
             config,
             structure_name,
@@ -199,7 +200,7 @@ def load_cache(
                 f"Scattering cache not found:\n{scat_path}"
             )
 
-        # cache["SCATTERING"] = load_scattering(scat_path)
+        cache["SCATTERING"] = load_scattering(scat_path)
 
     # =====================================================
     # DFT

@@ -6,7 +6,6 @@ from meep.materials import Au, Ti, SiO2, Pd
 # --------------------------------------------------------
 # MAIN LOGGER FUNCTION
 # --------------------------------------------------------
-
 def save_and_show_config(
         config,
         antenna,
@@ -26,7 +25,6 @@ def save_and_show_config(
 # --------------------------------------------------------
 # MATERIAL NAME RESOLVER
 # --------------------------------------------------------
-
 def _format_value(value):
     
     # ---- Symmetries
@@ -75,7 +73,6 @@ def _format_value(value):
 # --------------------------------------------------------
 # SHOW
 # --------------------------------------------------------
-
 def show_experiment(config, antennas):
     if mp.am_master():
         print("\n\n#################################")
@@ -117,7 +114,6 @@ def show_experiment(config, antennas):
 # --------------------------------------------------------
 # SAVE
 # --------------------------------------------------------
-
 def save_experiment(
         config,
         antennas,

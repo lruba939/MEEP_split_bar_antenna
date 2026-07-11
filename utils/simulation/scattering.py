@@ -1,6 +1,9 @@
 import meep as mp
 import numpy as np
-import os
+import os, h5py
+
+from utils.field_utils import *
+from utils.simulation.cache import *
 
 from visualization.plotter import *
 
@@ -287,7 +290,7 @@ def load_scattering(path, Nfreq):
             "z+": load_flux_monitor(path, "z+", Nfreq),
         },
 
-        "metadata": load_cache_metadata(
+        "metadata": load_metadata(
             os.path.dirname(path)
         ),
     }
