@@ -2080,7 +2080,7 @@ def compute_fields_2(
             "SCATTERING_start",
         )
 
-        def compute_scattering(
+        compute_scattering(
             Nfreq = config.nfreq,
                         
             empty_path=os.path.join(empty_cache, "SCATTERING"),
