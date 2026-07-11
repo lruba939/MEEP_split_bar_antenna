@@ -178,7 +178,7 @@ def plot_TRL_antenna_substrate(
     Ts,
     Ls,
     save_path,
-    save_name,
+    save_name="antenna_and_substrate",
 ):
     """
     Plots for TRL spectra.
@@ -203,7 +203,7 @@ def plot_TRL_antenna_substrate(
         title=save_name,
         legend=True,
         save_path=save_path,
-        save_name=f"antenna_and_substrate_lambda.png",
+        save_name=f"{save_name}_lambda.png",
     )
     
 def compute_TRL(
@@ -398,7 +398,6 @@ def compute_TRL(
                 Ra=results["antenna"]["R"], Ta=results["antenna"]["T"], La=results["antenna"]["L"],
                 Rs=results["substrate"]["R"], Ts=results["substrate"]["T"], Ls=results["substrate"]["L"],
                 save_path=save_path,
-                save_name=name,
             )
 
     return results
