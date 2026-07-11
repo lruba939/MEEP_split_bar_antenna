@@ -16,7 +16,10 @@ def save_and_show_config(
         antenna_cache=None,
     ):
     show_experiment(config, antenna)
-    save_experiment(config, antenna, COMMENT=COMMENT)
+    save_experiment(config, antenna, COMMENT=COMMENT,
+                    empty_cache=empty_cache,
+                    substrate_cache=substrate_cache,
+                    antenna_cache=antenna_cache)
     append_time_to_file(config, prefix="Start time: ")
     return 0
 
@@ -115,7 +118,15 @@ def show_experiment(config, antennas):
 # SAVE
 # --------------------------------------------------------
 
-def save_experiment(config, antennas, filename=None, COMMENT=None):
+def save_experiment(
+        config,
+        antennas,
+        filename=None,
+        COMMENT=None,
+        empty_cache=None,
+        substrate_cache=None,
+        antenna_cache=None
+    ):
     if mp.am_master():
         if filename is None:
             filename = os.path.join(config.path_to_save, "experiment.txt")
