@@ -129,7 +129,7 @@ def plot_TRL(
     save_name,
 ):
     """
-    Temporary debug plots for TRL spectra.
+    Plots for TRL spectra.
 
     Parameters
     ----------
@@ -154,18 +154,56 @@ def plot_TRL(
         save_name=f"{save_name}_lambda.png",
     )
 
+    # multi_line_plotter_same_axes(
+    #     xdata_list=[frequency, frequency, frequency],
+    #     ydata_list=[T, R, L],
+    #     labels=["T", "R", "L"],
+    #     colors=["blue", "red", "green"],
+    #     linestyles=["-", "--", "-."],
+    #     xlabel="Frequency [1/μm]",
+    #     ylabel="Fraction",
+    #     title=save_name,
+    #     legend=True,
+    #     save_path=save_path,
+    #     save_name=f"{save_name}_frequency.png",
+    # )
+
+def plot_TRL_antenna_substrate(
+    frequency,
+    wavelength,
+    Ra,
+    Ta,
+    La,
+    Rs,
+    Ts,
+    Ls,
+    save_path,
+    save_name,
+):
+    """
+    Plots for TRL spectra.
+
+    Parameters
+    ----------
+    frequency : ndarray
+    wavelength : ndarray
+    R{a/s}, T{a/s}, L{a/s} : ndarray
+    save_path : str
+    save_name : str
+    """
+
     multi_line_plotter_same_axes(
-        xdata_list=[frequency, frequency, frequency],
-        ydata_list=[T, R, L],
-        labels=["T", "R", "L"],
-        colors=["blue", "red", "green"],
-        linestyles=["-", "--", "-."],
-        xlabel="Frequency [1/μm]",
+        xdata_list=[wavelength, wavelength, wavelength, wavelength, wavelength, wavelength],
+        ydata_list=[Ta, Ra, La, Ts, Rs, Ls],
+        labels=["T antenna", "R antenna", "L antenna", "T substrate", "R substrate", "L substrate"],
+        colors=["blue", "red", "green", "tab:blue", "tab:red", "tab:green"],
+        linestyles=["-", "-", "-", ":", ":", ":"],
+        xlabel="Wavelength [μm]",
         ylabel="Fraction",
         title=save_name,
         legend=True,
         save_path=save_path,
-        save_name=f"{save_name}_frequency.png",
+        save_name=f"antenna_and_substrate_lambda.png",
     )
     
 def compute_TRL(
@@ -334,7 +372,6 @@ def compute_TRL(
         os.makedirs(save_path, exist_ok=True)
 
         for name, data in results.items():
-
             save_TRL(
                 frequency=data["frequency"],
                 wavelength=data["wavelength"],
@@ -344,13 +381,22 @@ def compute_TRL(
                 save_path=save_path,
                 save_name=name,
             )
-
             plot_TRL(
                 frequency=data["frequency"],
                 wavelength=data["wavelength"],
                 R=data["R"],
                 T=data["T"],
                 L=data["L"],
+                save_path=save_path,
+                save_name=name,
+            )
+            
+        if substrate is not None and antenna is not None:
+            plot_TRL_antenna_substrate(
+                frequency=data["frequency"],
+                wavelength=data["wavelength"],
+                Ra=results["antenna"]["R"], Ta=results["antenna"]["T"], La=results["antenna"]["L"],
+                Rs=results["substrate"]["R"], Ts=results["substrate"]["T"], Ls=results["substrate"]["L"],
                 save_path=save_path,
                 save_name=name,
             )
