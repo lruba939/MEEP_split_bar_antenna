@@ -10,7 +10,7 @@ def save_cache_metadata(
             structure_name,
             TRL_monitors=None,
             scattering_monitors=None,
-            dft_monitors=None,
+            dft_gap_monitors=None,
         ):
     """
     Save simulation metadata required for cache validation.
@@ -32,7 +32,7 @@ def save_cache_metadata(
     scattering_monitors : dict, optional
         Reserved for future use.
 
-    dft_monitors : dict, optional
+    dft_gap_monitors : dict, optional
         Reserved for future use.
     """
 
@@ -79,8 +79,8 @@ def save_cache_metadata(
     # =====================================================
     # DFT (future)
     # =====================================================
-    if dft_monitors is not None:
-        metadata["DFT"] = dft_monitors["metadata"]
+    if dft_gap_monitors is not None:
+        metadata["DFT"] = dft_gap_monitors["metadata"]
 
     with open(
         os.path.join(cache_dir, "metadata.json"),

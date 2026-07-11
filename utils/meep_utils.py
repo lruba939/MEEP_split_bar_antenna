@@ -10,7 +10,7 @@ from utils.sys_utils import *
 from utils.simulation.cache import *
 from utils.simulation.trl import *
 from utils.simulation.scattering import *
-# from utils.simulation.trl import *
+from utils.simulation.trl import *
 
 # !!!!!!!!! ---> from main.src.simulation import * # CANT IMPORT DUE TO CIRCULAR DEPENDENCY
 
@@ -1938,29 +1938,26 @@ def run_structure(
     calc_DPWR=False,
     TRL=False,
     TRL_monitors=None,
-    TRL_reference=None,
     scattering=False,
     scattering_monitors=None,
     dft_gap_spectrum=False,
-    dft_monitors=None,
+    dft_gap_monitors=None,
     harminv=False,
     harminv_objects=None,
 ):
     """
-    Run arbitrary structure simulation and collect raw data.
+    Run simulation and save all raw data to cache.
 
-    structure_name:
-        "empty"
-        "substrate"
-        "antenna"
-        or any future structure
+    Parameters
+    ----------
+    structure_name : str
+        "empty", "substrate", "antenna", ...
 
     Returns
     -------
-    dict
-        Raw simulation results.
+    str
+        Path to cache directory.
     """
-
     cache_dir = os.path.join(
         config.path_to_save,
         "cache",
@@ -1975,54 +1972,34 @@ def run_structure(
         structure_name=structure_name,
         TRL_monitors=TRL_monitors,
         scattering_monitors=scattering_monitors,
-        dft_monitors=dft_monitors,
+        dft_gap_monitors=dft_gap_monitors,
     )
-    ########################
-    log_system_usage(
-        config.path_to_save,
-        "save_cache_metadata",
-    )
-    #######################
+
+    log_system_usage(config.path_to_save, "save_cache_metadata")
 
     if mp.am_master():
         print(f"Running structure: {structure_name}")
         append_time_to_file(
             config,
-            prefix=f"Running structure {structure_name}: "
+            prefix=f"Running structure {structure_name}: ",
         )
 
     # =====================================================
     # HARMINV CALLBACKS
     # =====================================================
     if harminv and harminv_objects:
-
         extra_run_functions = [
-            mp.after_time(
-                config.harminv_t0,
-                h
-            )
+            mp.after_time(config.harminv_t0, h)
             for _, h in harminv_objects
         ]
-
     else:
-
         extra_run_functions = None
-
-    if TRL_reference is not None:
-        sim.load_minus_flux_data(
-            TRL_monitors["monitors"]["refl"],
-            TRL_reference["monitors"]["refl"]["flux_data"],
-        )
 
     # =====================================================
     # MAIN SIMULATION
     # =====================================================
-    ########################
-    log_system_usage(
-        config.path_to_save,
-        "befor_collect",
-    )
-    #######################
+    log_system_usage(config.path_to_save, "before_collect")
+
     sim = collect_fields_with_output(
         sim,
         volumes=planes,
@@ -2036,243 +2013,239 @@ def run_structure(
         extra_run_functions=extra_run_functions,
         config=config,
     )
-    ########################
-    log_system_usage(
-        config.path_to_save,
-        "after_collect",
-    )
-    #######################
-    results = {}
+
+    log_system_usage(config.path_to_save, "after_collect")
 
     # =====================================================
     # TRL
     # =====================================================
     if TRL and TRL_monitors:
-        results["TRL"] = {
-            "monitors": {},
-            "metadata": TRL_monitors["metadata"],
-        }
-
         trl_dir = os.path.join(cache_dir, "TRL")
-        os.makedirs(trl_dir, exist_ok=True)
 
         for name, monitor in TRL_monitors["monitors"].items():
 
-            flux = np.asarray(
-                mp.get_fluxes(monitor)
-            )
-
-            freqs = np.asarray(
-                mp.get_flux_freqs(monitor)
-            )
-
-            flux_data = sim.get_flux_data(
-                monitor
-            )
-
-            sim.save_flux(
-                f"{name}_dft",
+            save_flux_monitor(
+                sim,
                 monitor,
+                name,
+                path=trl_dir,
+                subdirectory="TRL",
             )
-
-            results["TRL"]["monitors"][name] = {
-                "flux": flux,
-                "freqs": freqs,
-                "flux_data": flux_data,
-            }
-
-            ########################
-            log_system_usage(
-                config.path_to_save,
-                "start_save_npz_files",
-            )
-            #######################
-            # save numpy data
-            np.savez(
-                os.path.join(
-                    trl_dir,
-                    f"{name}.npz"
-                ),
-                flux=flux,
-                freqs=freqs,
-            )
-            ########################
-            log_system_usage(
-                config.path_to_save,
-                "TRL_saves_done",
-            )
-            #######################
 
     # =====================================================
     # SCATTERING
     # =====================================================
     if scattering and scattering_monitors:
-
-        results["SCATTERING"] = {
-            "metadata": scattering_monitors["metadata"],
-            "monitors": {},
-        }
+        scattering_dir = os.path.join(cache_dir, "SCATTERING")
 
         for name, monitor in scattering_monitors["monitors"].items():
 
-            flux = np.asarray(
-                mp.get_fluxes(monitor)
+            save_flux_monitor(
+                sim,
+                monitor,
+                name,
+                path=scattering_dir,
+                subdirectory="SCATTERING",
             )
 
-            flux_data = sim.get_flux_data(
-                monitor
-            )
-
-            results["SCATTERING"]["monitors"][name] = {
-                "flux": flux,
-                "flux_data": flux_data,
-            }
-            
     # =====================================================
-    # DFT
+    # GAP DFT
     # =====================================================
-    if dft_gap_spectrum and dft_monitors:
+    if dft_gap_spectrum and dft_gap_monitors:
+        dft_dir = os.path.join(cache_dir, "GAP_DFT")
 
-        results["dft"] = {}
+        os.makedirs(dft_dir, exist_ok=True)
 
-        for name, monitor in dft_monitors.items():
+        for name, monitor in dft_gap_monitors.items():
 
-            results["dft"][name] = {}
-
-            for comp in [
+            for comp_name, comp in (
                 ("Ex", mp.Ex),
                 ("Ey", mp.Ey),
                 ("Ez", mp.Ez),
-            ]:
+            ):
 
-                cname, cfield = comp
-
-                results["dft"][name][cname] = np.array([
-                    sim.get_dft_array(
-                        monitor,
-                        cfield,
-                        i
-                    )
-                    for i in range(
-                        config.nfreq
-                    )
-                ])
+                np.save(
+                    os.path.join(dft_dir,f"{name}_{comp_name}.npy"),
+                    np.array([
+                        sim.get_dft_array(
+                            monitor,
+                            comp,
+                            i,
+                        )
+                        for i in range(config.nfreq)
+                    ]),
+                )
 
     # =====================================================
     # HARMINV
     # =====================================================
     if harminv and harminv_objects:
+        harminv_dir = os.path.join( cache_dir, "HARMINV")
 
-        results["harminv"] = []
+        os.makedirs(harminv_dir, exist_ok=True)
 
-        for point, h in harminv_objects:
-
-            results["harminv"].append({
-                "point": point,
-                "harminv": h,
-            })
+        save_harminv_raw(
+            harminv_objects,
+            harminv_dir,
+        )
 
     if mp.am_master():
         print(f"Finished structure: {structure_name}")
 
     sim.reset_meep()
 
-    return results
+    return cache_dir
 
-def compute_fields_2(
-    sim_empty=None,
-    empty_from_cache=None,
-    sim_substrate=None,
-    sim_antenna=None,
-    volumes=None,
-    config=None,
+def run_or_load_structure(
+    sim,
+    cache_dir,
+    structure_name,
+    planes,
+    config,
     calc_E=True,
     calc_H=False,
     calc_DPWR=False,
-    TRL=True,
-    TRL_X_size=None,
-    TRL_Y_size=None,
-    scattering=False,
-    scattering_object=None,
-    scattering_padding_perc=10,
-    scattering_extra_padding_nm=(0, 0, 0),
+    TRL_monitors=None,
+    scattering_monitors=None,
     dft_gap_spectrum=False,
+    dft_monitors=None,
     harminv=False,
     harminv_objects=None,
 ):
     """
-    Run all requested structures and collect raw data.
+    Load existing cache or run simulation.
+
+    Parameters
+    ----------
+    sim : mp.Simulation or None
+
+    cache_dir : str or None
+        Existing cache directory. If not None, simulation is skipped.
+
+    structure_name : str
+        "empty", "substrate", "antenna", ...
 
     Returns
     -------
-    dict
-        {
-            "empty": ...,
-            "substrate": ...,
-            "antenna": ...
-        }
+    str
+        Path to structure cache.
     """
+    # =====================================================
+    # LOAD CACHE
+    # =====================================================
+    if cache_dir is not None:
+        log_system_usage(
+            config.path_to_save,
+            f"{structure_name}_load_cache",
+        )
+        return cache_dir
 
+    # =====================================================
+    # NOTHING TO RUN
+    # =====================================================
+    if sim is None:
+        return None
+
+    log_system_usage(
+        config.path_to_save,
+        f"{structure_name}_start",
+    )
+
+    # =====================================================
+    # RUN SIMULATION
+    # =====================================================
+    cache_dir = run_structure(
+        sim=sim,
+        structure_name=structure_name,
+        planes=planes,
+        config=config,
+        calc_E=calc_E,
+        calc_H=calc_H,
+        calc_DPWR=calc_DPWR,
+        TRL=TRL_monitors is not None,
+        TRL_monitors=TRL_monitors,
+        scattering=scattering_monitors is not None,
+        scattering_monitors=scattering_monitors,
+        dft_gap_spectrum=dft_gap_spectrum,
+        dft_monitors=dft_monitors,
+        harminv=harminv,
+        harminv_objects=harminv_objects,
+    )
+
+    log_system_usage(
+        config.path_to_save,
+        f"{structure_name}_after_run_structure",
+    )
+
+    return cache_dir
+
+def compute_fields_2(
+    sim_empty=None,
+    empty_from_cache=None,
+
+    sim_substrate=None,
+    substrate_from_cache=None,
+
+    sim_antenna=None,
+    antenna_from_cache=None,
+
+    volumes=None,
+    config=None,
+
+    calc_E=True,
+    calc_H=False,
+    calc_DPWR=False,
+
+    TRL=True,
+    TRL_X_size=None,
+    TRL_Y_size=None,
+
+    scattering=False,
+    scattering_object=None,
+    scattering_padding_perc=10,
+    scattering_extra_padding_nm=(0, 0, 0),
+
+    dft_gap_spectrum=False,
+
+    harminv=False,
+    harminv_objects=None,
+):
+    """
+    Run simulations (or load cache) and perform requested analyses.
+    """
+    # =====================================================
+    # PLANES
+    # =====================================================
     planes = {
         "xyplanar": volumes.volume["XY"],
         "xyplanarTOP": volumes.volume["XY_TOP"],
         "xzplanar": volumes.volume["XZ"],
         "yzplanar": volumes.volume["YZ"],
     }
-    
-    results = {}    
-    # ============================================================
-    # EMPTY
-    # ============================================================
-    empty_cache = None
-    
-    if empty_from_cache is not None:    
-        # ########################
-        # log_system_usage(
-        #     config.path_to_save,
-        #     "empty_load",
-        # )
-        # #######################
-        # results["empty"] = load_cache(path=empty_from_cache, TRL=TRL, scattering=scattering, dft=dft_gap_spectrum, harminv=harminv)
-        # validate_cache(
-        #     metadata=results["empty"]["metadata"],
-        #     config=config,
-        #     TRL=TRL,
-        #     TRL_X_size=TRL_X_size,
-        #     TRL_Y_size=TRL_Y_size,
-        #     scattering=scattering,
-        #     dft=dft_gap_spectrum,
-        #     harminv=harminv,
-        # )
-        pass
-        
-    elif sim_empty is not None:
-        ########################
-        log_system_usage(
-            config.path_to_save,
-            "empty_start",
-        )
-        #######################    
-        # Empty planes
-        empty_planes = {
-            f"{name}-empty": vol
-            for name, vol in planes.items()
-        }
-        
-        # Transmitance-Reflectance-Loss (TRL)
-        empty_TRL_monitors = None
+
+    empty_planes = {
+        f"{k}-empty": v
+        for k, v in planes.items()
+    }
+
+    # =====================================================
+    # EMPTY MONITORS
+    # =====================================================
+    empty_TRL = None
+    empty_scattering = None
+
+    if sim_empty is not None:
+
         if TRL:
-            empty_TRL_monitors = setup_TRL_monitors(
+            empty_TRL = setup_TRL_monitors(
                 sim_empty,
                 config,
                 TRL_X_size,
                 TRL_Y_size,
             )
-    
-        # Scattering
-        empty_scattering_monitors = None
+
         if scattering:
-            empty_scattering_monitors = setup_scattering_monitors(
+            empty_scattering = setup_scattering_monitors(
                 sim=sim_empty,
                 scattering_object=scattering_object,
                 config=config,
@@ -2280,66 +2253,24 @@ def compute_fields_2(
                 extra_padding_nm=scattering_extra_padding_nm,
             )
 
-        ########################
-        log_system_usage(
-            config.path_to_save,
-            "empty_monitores",
-        )
-        #######################
-    
-        results["empty"] = run_structure(
-            sim=sim_empty,
-            structure_name="empty",
-            planes=empty_planes,
-            config=config,
+    # =====================================================
+    # SUBSTRATE MONITORS
+    # =====================================================
+    substrate_TRL = None
+    substrate_scattering = None
 
-            calc_E=calc_E,
-            calc_H=calc_H,
-            calc_DPWR=calc_DPWR,
-
-            TRL=TRL,
-            TRL_monitors=empty_TRL_monitors,
-
-            scattering=scattering,
-            scattering_monitors=empty_scattering_monitors,
-
-            dft_gap_spectrum=dft_gap_spectrum,
-            dft_monitors=None,
-
-            harminv=False,
-        )
-
-        ########################
-        log_system_usage(
-            config.path_to_save,
-            "empty_after_run_structure",
-        )
-        #######################
-    
-    # ============================================================
-    # SUBSTRATE
-    # ============================================================
     if sim_substrate is not None:
-        ########################
-        log_system_usage(
-            config.path_to_save,
-            "substrate_start",
-        )
-        #######################
-        # Transmitance-Reflectance-Loss (TRL)
-        substrate_TRL_monitors = None
-        if TRL is True:
-            substrate_TRL_monitors = setup_TRL_monitors(
+
+        if TRL:
+            substrate_TRL = setup_TRL_monitors(
                 sim_substrate,
                 config,
                 TRL_X_size,
                 TRL_Y_size,
             )
 
-        # Scattering
-        substrate_scattering_monitors = None
         if scattering:
-            substrate_scattering_monitors = setup_scattering_monitors(
+            substrate_scattering = setup_scattering_monitors(
                 sim=sim_substrate,
                 scattering_object=scattering_object,
                 config=config,
@@ -2347,174 +2278,188 @@ def compute_fields_2(
                 extra_padding_nm=scattering_extra_padding_nm,
             )
 
-        ########################
-        log_system_usage(
-            config.path_to_save,
-            "substrate_monitores",
-        )
-        #######################
+    # =====================================================
+    # ANTENNA MONITORS
+    # =====================================================
+    antenna_TRL = None
+    antenna_scattering = None
 
-        results["substrate"] = run_structure(
-            sim=sim_substrate,
-            structure_name="substrate",
-            planes=planes,
-            config=config,
-
-            calc_E=calc_E,
-            calc_H=calc_H,
-            calc_DPWR=calc_DPWR,
-
-            TRL=TRL,
-            TRL_monitors=substrate_TRL_monitors,
-            # TRL_reference=results["empty"]["TRL"],
-
-            scattering=scattering,
-            scattering_monitors=substrate_scattering_monitors,
-
-            dft_gap_spectrum=dft_gap_spectrum,
-            dft_monitors=None,
-
-            harminv=harminv,
-            harminv_objects=harminv_objects,
-        )
-        ########################
-        log_system_usage(
-            config.path_to_save,
-            "substrate_after_run_structure",
-        )
-        #######################
-        
-    # ============================================================
-    # ANTENNA
-    # ============================================================
     if sim_antenna is not None:
-        ########################
-        log_system_usage(
-            config.path_to_save,
-            "antenna_start",
-        )
-        #######################
-        # Transmitance-Reflectance-Loss (TRL)
-        antenna_TRL_monitors = None
-        if TRL is True:
-            antenna_TRL_monitors = setup_TRL_monitors(
+
+        if TRL:
+            antenna_TRL = setup_TRL_monitors(
                 sim_antenna,
                 config,
                 TRL_X_size,
                 TRL_Y_size,
             )
-        # Scattering
-        antenna_scattering_monitors = None
+
         if scattering:
-            antenna_scattering_monitors = setup_scattering_monitors(
+            antenna_scattering = setup_scattering_monitors(
                 sim=sim_antenna,
                 scattering_object=scattering_object,
                 config=config,
                 padding_perc=scattering_padding_perc,
                 extra_padding_nm=scattering_extra_padding_nm,
             )
-        ########################
+
+    # =====================================================
+    # EMPTY
+    # =====================================================
+    empty_cache = run_or_load_structure(
+        sim=sim_empty,
+        cache_path=empty_from_cache,
+        structure_name="empty",
+        planes=empty_planes,
+        config=config,
+
+        calc_E=calc_E,
+        calc_H=calc_H,
+        calc_DPWR=calc_DPWR,
+
+        TRL_monitors=empty_TRL,
+        scattering_monitors=empty_scattering,
+
+        dft_gap_spectrum=dft_gap_spectrum,
+        dft_gap_monitors=None,
+
+        harminv=False,
+    )
+
+    # =====================================================
+    # SUBSTRATE
+    # =====================================================
+    substrate_cache = run_or_load_structure(
+        sim=sim_substrate,
+        cache_path=substrate_from_cache,
+        structure_name="substrate",
+        planes=planes,
+        config=config,
+
+        calc_E=calc_E,
+        calc_H=calc_H,
+        calc_DPWR=calc_DPWR,
+
+        TRL_monitors=substrate_TRL,
+        scattering_monitors=substrate_scattering,
+
+        dft_gap_spectrum=dft_gap_spectrum,
+        dft_gap_monitors=None,
+
+        harminv=harminv,
+        harminv_objects=harminv_objects,
+    )
+
+    # =====================================================
+    # ANTENNA
+    # =====================================================
+    antenna_cache = run_or_load_structure(
+        sim=sim_antenna,
+        cache_path=antenna_from_cache,
+        structure_name="antenna",
+        planes=planes,
+        config=config,
+
+        calc_E=calc_E,
+        calc_H=calc_H,
+        calc_DPWR=calc_DPWR,
+
+        TRL_monitors=antenna_TRL,
+        scattering_monitors=antenna_scattering,
+
+        dft_gap_spectrum=dft_gap_spectrum,
+        dft_gap_monitors=None,
+
+        harminv=harminv,
+        harminv_objects=harminv_objects,
+    )
+
+    # =====================================================
+    # TRL
+    # =====================================================
+    if TRL:
         log_system_usage(
             config.path_to_save,
-            "antenna_monitores",
+            "TRL_start",
         )
-        #######################
-        
-        results["antenna"] = run_structure(
-            sim=sim_antenna,
-            structure_name="antenna",
-            planes=planes,
-            config=config,
 
-            calc_E=calc_E,
-            calc_H=calc_H,
-            calc_DPWR=calc_DPWR,
-
-            TRL=TRL,
-            TRL_monitors=antenna_TRL_monitors,
-            # TRL_reference=results["empty"]["TRL"],
-
-            scattering=scattering,
-            scattering_monitors=antenna_scattering_monitors,
-
-            dft_gap_spectrum=dft_gap_spectrum,
-            dft_monitors=None,
-
-            harminv=harminv,
-            harminv_objects=harminv_objects,
+        compute_TRL(
+            empty_path=os.path.join(empty_cache, "TRL"),
+            
+            substrate_path=(
+                os.path.join(substrate_cache, "TRL")
+                if substrate_cache is not None else None
+            ),
+            
+            antenna_path=(
+                os.path.join(antenna_cache, "TRL")
+                if antenna_cache is not None else None
+            ),
+            
+            save_path=os.path.join(
+                config.path_to_save,
+                "TRL",
+            )
         )
-        ########################
+
         log_system_usage(
             config.path_to_save,
-            "antenna_after_run_structure",
+            "TRL_end",
         )
-        #######################
-        
-    # ============================================================
-    # ANALYSIS
-    # ============================================================
-    if TRL is True:
-        if sim_substrate is not None:
-            ########################
-            log_system_usage(
-                config.path_to_save,
-                "TRL_substrate_start",
-            )
-            #######################
-            TRL_substrate = compute_TRL(
-                reference=results["empty"]["TRL"],
-                structure=results["substrate"]["TRL"],
-                save_path=config.path_to_save,
-                save_name="TRL_substrate",
-            )
-            ########################
-            log_system_usage(
-                config.path_to_save,
-                "TRL_substrate_end",
-            )
-            #######################
-        if sim_antenna is not None:
-            ########################
-            log_system_usage(
-                config.path_to_save,
-                "TRL_antenna_start",
-            )
-            #######################
-            TRL_antenna = compute_TRL(
-                reference=results["empty"]["TRL"],
-                structure=results["antenna"]["TRL"],
-                save_path=config.path_to_save,
-                save_name="TRL_antenna",
-            )
-            ########################
-            log_system_usage(
-                config.path_to_save,
-                "TRL_antenna_end",
-            )
-            #######################
 
-        if sim_substrate is not None and sim_antenna is not None:
-            ########################
-            log_system_usage(
-                config.path_to_save,
-                "TRL_difference_start",
-            )
-            #######################
-            TRL_difference = compute_difference_spectra(
-                TRL_antenna,
-                TRL_substrate,
-                keys=("R", "T", "L"),
-                save_path=config.path_to_save,
-                save_name="TRL_antenna_minus_substrate",
-            )
-            ########################
-            log_system_usage(
-                config.path_to_save,
-                "TRL_difference_end",
-            )
-            #######################
+    # =====================================================
+    # SCATTERING
+    # =====================================================
+    if scattering:
+        log_system_usage(
+            config.path_to_save,
+            "SCATTERING_start",
+        )
 
-    return results
+        # compute_scattering(...)
+
+        log_system_usage(
+            config.path_to_save,
+            "SCATTERING_end",
+        )
+
+    # =====================================================
+    # GAP DFT
+    # =====================================================
+    if dft_gap_spectrum:
+        log_system_usage(
+            config.path_to_save,
+            "DFT_start",
+        )
+
+        # compute_gap_spectrum(...)
+
+        log_system_usage(
+            config.path_to_save,
+            "DFT_end",
+        )
+
+    # =====================================================
+    # HARMINV
+    # =====================================================
+    if harminv:
+        log_system_usage(
+            config.path_to_save,
+            "HARMINV_start",
+        )
+
+        # compute_harminv(...)
+
+        log_system_usage(
+            config.path_to_save,
+            "HARMINV_end",
+        )
+
+    return {
+        "empty": empty_cache,
+        "substrate": substrate_cache,
+        "antenna": antenna_cache,
+    }
 
 def compute_difference_spectra(
     spectra1,

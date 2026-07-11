@@ -3,6 +3,7 @@ import numpy as np
 import os, h5py
 
 from visualization.plotter import *
+from utils.field_utils import *
 
 def setup_TRL_monitors(sim, config, TRL_X_size=None, TRL_Y_size=None):
 
@@ -60,122 +61,193 @@ def setup_TRL_monitors(sim, config, TRL_X_size=None, TRL_Y_size=None):
         }
     }
 
-
-def load_TRL(path, DEBUG=False):
-    """
-    Load cached TRL data.
-    """
-    results = {
-        "monitors": {},
-    }
-
-    for name in ["refl"]: #, "tran"
-
-        npz = np.load(
-            os.path.join(path, f"{name}.npz")
-        )
-
-        with open(
-            os.path.join(path, f"{name}_flux_data.pkl"),
-            "rb"
-        ) as f:
-            flux_data = pickle.load(f)
-
-        results["monitors"][name] = {
-            "flux": npz["flux"],
-            "freqs": npz["freqs"],
-            "flux_data": flux_data,
+def load_TRL(path, Nfreq):
+    return {
+        "monitors": {
+            "refl": load_flux_monitor(
+                path,
+                "refl",
+                Nfreq,
+            ),
+            "tran": load_flux_monitor(
+                path,
+                "tran",
+                Nfreq,
+            ),
         }
-
-    if DEBUG:
-        fd = results["monitors"]["refl"]["flux_data"]
-        
-        print(type(fd))
-        print(dir(fd))
-        print(type(fd.E))
-        print(type(fd.H))
-        
-        print(fd.E.shape)
-        print(fd.H.shape)
-        
-        print(fd.E.nbytes/1024**3)
-        print(fd.H.nbytes/1024**3)
-
-    return results
-
-def compute_TRL(
-    reference,
-    structure,
-    save_path=None,
-    save_name="TRL",
+    }
+def save_TRL(
+    frequency,
+    wavelength,
+    R,
+    T,
+    L,
+    save_path,
+    save_name,
 ):
     """
-    Compute reflection, transmission and loss spectra.
+    Save TRL spectra to text and NumPy files.
 
     Parameters
     ----------
-    reference : dict
-        Reference TRL cache, usually empty structure.
+    frequency : ndarray
 
-    structure : dict
-        Structure TRL cache.
+    wavelength : ndarray
 
-    save_path : str or None
-        Output directory.
+    R, T, L : ndarray
+
+    save_path : str
 
     save_name : str
-        Prefix for saved files.
+    """
+
+    os.makedirs(save_path,exist_ok=True)
+
+    data = np.column_stack([frequency, wavelength, T, R, L])
+
+    np.savetxt(os.path.join(save_path, f"{save_name}.dat"), data, header="frequency wavelength T R L")
+
+    np.savez(
+        os.path.join(
+            save_path,
+            f"{save_name}.npz",
+        ),
+        frequency=frequency,
+        wavelength=wavelength,
+        T=T,
+        R=R,
+        L=L,
+    )
+
+def plot_TRL(
+    frequency,
+    wavelength,
+    R,
+    T,
+    L,
+    save_path,
+    save_name,
+):
+    """
+    Temporary debug plots for TRL spectra.
+
+    Parameters
+    ----------
+    frequency : ndarray
+    wavelength : ndarray
+    R, T, L : ndarray
+    save_path : str
+    save_name : str
+    """
+
+    multi_line_plotter_same_axes(
+        xdata_list=[wavelength, wavelength, wavelength],
+        ydata_list=[T, R, L],
+        labels=["T", "R", "L"],
+        colors=["blue", "red", "green"],
+        linestyles=["-", "--", "-."],
+        xlabel="Wavelength [μm]",
+        ylabel="Fraction",
+        title=save_name,
+        legend=True,
+        save_path=save_path,
+        save_name=f"{save_name}_lambda.png",
+    )
+
+    multi_line_plotter_same_axes(
+        xdata_list=[frequency, frequency, frequency],
+        ydata_list=[T, R, L],
+        labels=["T", "R", "L"],
+        colors=["blue", "red", "green"],
+        linestyles=["-", "--", "-."],
+        xlabel="Frequency [1/μm]",
+        ylabel="Fraction",
+        title=save_name,
+        legend=True,
+        save_path=save_path,
+        save_name=f"{save_name}_frequency.png",
+    )
+    
+def compute_TRL(
+    empty_path,
+    substrate_path=None,
+    antenna_path=None,
+    save_path=None,
+):
+    """
+    Compute TRL spectra from cached DFT fields.
+
+    Parameters
+    ----------
+    empty_path : str
+        Path to cache/empty/TRL.
+
+    substrate_path : str or None
+        Path to cache/substrate/TRL.
+
+    antenna_path : str or None
+        Path to cache/antenna/TRL.
+
+    save_path : str or None
+        Directory for saving results.
 
     Returns
     -------
     dict
-        {
-            "wavelength": ...,
-            "R": ...,
-            "T": ...,
-            "L": ...,
-        }
     """
 
     if not mp.am_master():
         return
 
     # =====================================================
-    # LOAD DATA
+    # LOAD
     # =====================================================
 
-    incident_flux = np.asarray(
-        reference["monitors"]["tran"]["flux"]
+    empty = load_TRL(empty_path)
+
+    substrate = None
+    antenna = None
+
+    if substrate_path is not None:
+        substrate = load_TRL(substrate_path)
+
+    if antenna_path is not None:
+        antenna = load_TRL(antenna_path)
+
+    # =====================================================
+    # REFERENCE
+    # =====================================================
+
+    frequency = empty["monitors"]["tran"]["freqs"]
+    wavelength = 1.0 / frequency
+
+    incident_flux = compute_flux(
+        empty["monitors"]["tran"]["E"],
+        empty["monitors"]["tran"]["H"],
     )
 
-    refl_flux = np.asarray(
-        structure["monitors"]["refl"]["flux"]
+    results = {}
+
+    # =====================================================
+    # EMPTY
+    # =====================================================
+
+    refl = compute_flux(
+        empty["monitors"]["refl"]["E"],
+        empty["monitors"]["refl"]["H"],
     )
 
-    tran_flux = np.asarray(
-        structure["monitors"]["tran"]["flux"]
+    tran = compute_flux(
+        empty["monitors"]["tran"]["E"],
+        empty["monitors"]["tran"]["H"],
     )
 
-    flux_freqs = np.asarray(
-        structure["monitors"]["tran"]["freqs"]
-    )
-
-    # =====================================================
-    # WAVELENGTH
-    # =====================================================
-
-    wavelength = 1.0 / flux_freqs
-
-    # =====================================================
-    # R T L
-    # =====================================================
-
-    R = -refl_flux / incident_flux
-    T = tran_flux / incident_flux
+    R = -refl / incident_flux
+    T = tran / incident_flux
     L = 1.0 - R - T
 
-    results = {
-        "frequency": flux_freqs,
+    results["empty"] = {
+        "frequency": frequency,
         "wavelength": wavelength,
         "R": R,
         "T": T,
@@ -183,78 +255,125 @@ def compute_TRL(
     }
 
     # =====================================================
+    # SUBSTRATE
+    # =====================================================
+
+    if substrate is not None:
+
+        refl = compute_flux_difference(
+            substrate["monitors"]["refl"]["E"],
+            substrate["monitors"]["refl"]["H"],
+            empty["monitors"]["refl"]["E"],
+            empty["monitors"]["refl"]["H"],
+        )
+
+        tran = compute_flux(
+            substrate["monitors"]["tran"]["E"],
+            substrate["monitors"]["tran"]["H"],
+        )
+
+        R = -refl / incident_flux
+        T = tran / incident_flux
+        L = 1.0 - R - T
+
+        results["substrate"] = {
+            "frequency": frequency,
+            "wavelength": wavelength,
+            "R": R,
+            "T": T,
+            "L": L,
+        }
+
+    # =====================================================
+    # ANTENNA
+    # =====================================================
+
+    if antenna is not None:
+
+        refl = compute_flux_difference(
+            antenna["monitors"]["refl"]["E"],
+            antenna["monitors"]["refl"]["H"],
+            empty["monitors"]["refl"]["E"],
+            empty["monitors"]["refl"]["H"],
+        )
+
+        tran = compute_flux(
+            antenna["monitors"]["tran"]["E"],
+            antenna["monitors"]["tran"]["H"],
+        )
+
+        R = -refl / incident_flux
+        T = tran / incident_flux
+        L = 1.0 - R - T
+
+        results["antenna"] = {
+            "frequency": frequency,
+            "wavelength": wavelength,
+            "R": R,
+            "T": T,
+            "L": L,
+        }
+
+    # =====================================================
+    # ANTENNA ONLY
+    # =====================================================
+
+    if substrate is not None and antenna is not None:
+
+        refl = compute_flux_difference(
+            antenna["monitors"]["refl"]["E"],
+            antenna["monitors"]["refl"]["H"],
+            substrate["monitors"]["refl"]["E"],
+            substrate["monitors"]["refl"]["H"],
+        )
+
+        tran = compute_flux_difference(
+            antenna["monitors"]["tran"]["E"],
+            antenna["monitors"]["tran"]["H"],
+            substrate["monitors"]["tran"]["E"],
+            substrate["monitors"]["tran"]["H"],
+        )
+
+        R = -refl / incident_flux
+        T = tran / incident_flux
+        L = 1.0 - R - T
+
+        results["antenna_only"] = {
+            "frequency": frequency,
+            "wavelength": wavelength,
+            "R": R,
+            "T": T,
+            "L": L,
+        }
+
+    # =====================================================
     # SAVE
     # =====================================================
 
     if save_path is not None:
 
-        trl_dir = os.path.join(
-            save_path,
-            "TRL",
-        )
+        os.makedirs(save_path, exist_ok=True)
 
-        os.makedirs(
-            trl_dir,
-            exist_ok=True,
-        )
+        for name, data in results.items():
 
-        data = np.column_stack(
-            [
-                flux_freqs,
-                wavelength,
-                R,
-                T,
-                L,
-            ]
-        )
+            save_TRL(
+                frequency=data["frequency"],
+                wavelength=data["wavelength"],
+                R=data["R"],
+                T=data["T"],
+                L=data["L"],
+                save_path=save_path,
+                save_name=name,
+            )
 
-        np.savetxt(
-            os.path.join(
-                trl_dir,
-                f"{save_name}.txt",
-            ),
-            data,
-            header="frequency wavelength R T L",
-        )
+            plot_TRL(
+                frequency=data["frequency"],
+                wavelength=data["wavelength"],
+                R=data["R"],
+                T=data["T"],
+                L=data["L"],
+                save_path=save_path,
+                save_name=name,
+            )
 
-        np.savez(
-            os.path.join(
-                trl_dir,
-                f"{save_name}.npz",
-            ),
-            frequency=flux_freqs,
-            wavelength=wavelength,
-            R=R,
-            T=T,
-            L=L,
-        )
-
-        multi_line_plotter_same_axes(
-            xdata_list=[wavelength, wavelength, wavelength],
-            ydata_list=[R,T,L],
-            labels=["R","T","L"],
-            colors=["blue","red","green"],
-            linestyles=["-","--","-."],
-            xlabel="Wavelength [μm]",
-            ylabel="Fraction",
-            title=f"{save_name} vs wavelength",
-            legend=True,
-            save_path=trl_dir,
-            save_name=f"{save_name}_lambda.png",
-        )
-        
-        multi_line_plotter_same_axes(
-            xdata_list=[flux_freqs,flux_freqs,flux_freqs],
-            ydata_list=[R,T,L],
-            labels=["R","T","L"],
-            colors=["blue","red","green"],
-            linestyles=["-","--","-."],
-            xlabel="Frequency [1/μm]",
-            ylabel="Fraction",
-            title=f"{save_name} vs frequency",
-            legend=True,
-            save_path=trl_dir,
-            save_name=f"{save_name}_frequency.png",
-        )
-        
     return results
