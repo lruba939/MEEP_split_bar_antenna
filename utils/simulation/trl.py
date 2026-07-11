@@ -196,14 +196,12 @@ def compute_TRL(
     -------
     dict
     """
-
     if not mp.am_master():
         return
 
     # =====================================================
     # LOAD
     # =====================================================
-
     empty = load_TRL(empty_path, Nfreq)
 
     substrate = None
@@ -218,7 +216,6 @@ def compute_TRL(
     # =====================================================
     # REFERENCE
     # =====================================================
-
     frequency = empty["monitors"]["tran"]["freqs"]
     wavelength = 1.0 / frequency
 
@@ -232,7 +229,6 @@ def compute_TRL(
     # =====================================================
     # EMPTY
     # =====================================================
-
     refl = compute_flux(
         empty["monitors"]["refl"]["E"],
         empty["monitors"]["refl"]["H"],
@@ -258,7 +254,6 @@ def compute_TRL(
     # =====================================================
     # SUBSTRATE
     # =====================================================
-
     if substrate is not None:
 
         refl = compute_flux_difference(
@@ -288,7 +283,6 @@ def compute_TRL(
     # =====================================================
     # ANTENNA
     # =====================================================
-
     if antenna is not None:
 
         refl = compute_flux_difference(
@@ -316,30 +310,15 @@ def compute_TRL(
         }
 
     # =====================================================
-    # ANTENNA ONLY
+    # ANTENNA - SUBSTRATE
     # =====================================================
-
     if substrate is not None and antenna is not None:
 
-        refl = compute_flux_difference(
-            antenna["monitors"]["refl"]["E"],
-            antenna["monitors"]["refl"]["H"],
-            substrate["monitors"]["refl"]["E"],
-            substrate["monitors"]["refl"]["H"],
-        )
+        R = (results["antenna"]["R"] - results["substrate"]["R"])
+        T = (results["antenna"]["T"] - results["substrate"]["T"])
+        L = (results["antenna"]["L"] - results["substrate"]["L"])
 
-        tran = compute_flux_difference(
-            antenna["monitors"]["tran"]["E"],
-            antenna["monitors"]["tran"]["H"],
-            substrate["monitors"]["tran"]["E"],
-            substrate["monitors"]["tran"]["H"],
-        )
-
-        R = -refl / incident_flux
-        T = tran / incident_flux
-        L = 1.0 - R - T
-
-        results["antenna_only"] = {
+        results["antenna_minus_substrate"] = {
             "frequency": frequency,
             "wavelength": wavelength,
             "R": R,
@@ -350,7 +329,6 @@ def compute_TRL(
     # =====================================================
     # SAVE
     # =====================================================
-
     if save_path is not None:
 
         os.makedirs(save_path, exist_ok=True)
