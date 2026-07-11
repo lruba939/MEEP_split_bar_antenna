@@ -169,6 +169,7 @@ def plot_TRL(
     )
     
 def compute_TRL(
+    Nfreq,
     empty_path,
     substrate_path=None,
     antenna_path=None,
@@ -203,16 +204,16 @@ def compute_TRL(
     # LOAD
     # =====================================================
 
-    empty = load_TRL(empty_path)
+    empty = load_TRL(empty_path, Nfreq)
 
     substrate = None
     antenna = None
 
     if substrate_path is not None:
-        substrate = load_TRL(substrate_path)
+        substrate = load_TRL(substrate_path, Nfreq)
 
     if antenna_path is not None:
-        antenna = load_TRL(antenna_path)
+        antenna = load_TRL(antenna_path, Nfreq)
 
     # =====================================================
     # REFERENCE

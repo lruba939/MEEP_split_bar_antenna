@@ -177,9 +177,14 @@ def bowtie_substrate_experiment(material_name, COMMENT=None):
  
     compute_fields_2(
         sim_empty=sim_empty,
+        empty_from_cache="results/bowtie__lam-660__gap-6__L-87__T-30__R-5__ant-Au__sub-Au__15/cache/empty/",
+
         sim_substrate=sim_substrate,
+        substrate_from_cache="results/bowtie__lam-660__gap-6__L-87__T-30__R-5__ant-Au__sub-Au__15/cache/substrate/",
+
         sim_antenna=sim_antenna,
-        # empty_from_cache="results/bowtie__lam-660__gap-6__L-87__T-30__R-5__ant-Au__sub-Au__8/cache/empty/",
+        antenna_from_cache="results/bowtie__lam-660__gap-6__L-87__T-30__R-5__ant-Au__sub-Au__15/cache/antenna/",
+
         volumes=antenna_vols,
         config=config,
 

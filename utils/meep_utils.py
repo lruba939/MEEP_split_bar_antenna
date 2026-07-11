@@ -2108,7 +2108,7 @@ def run_or_load_structure(
     TRL_monitors=None,
     scattering_monitors=None,
     dft_gap_spectrum=False,
-    dft_monitors=None,
+    dft_gap_monitors=None,
     harminv=False,
     harminv_objects=None,
 ):
@@ -2167,7 +2167,7 @@ def run_or_load_structure(
         scattering=scattering_monitors is not None,
         scattering_monitors=scattering_monitors,
         dft_gap_spectrum=dft_gap_spectrum,
-        dft_monitors=dft_monitors,
+        dft_gap_monitors=dft_gap_monitors,
         harminv=harminv,
         harminv_objects=harminv_objects,
     )
@@ -2308,7 +2308,7 @@ def compute_fields_2(
     # =====================================================
     empty_cache = run_or_load_structure(
         sim=sim_empty,
-        cache_path=empty_from_cache,
+        cache_dir=empty_from_cache,
         structure_name="empty",
         planes=empty_planes,
         config=config,
@@ -2331,7 +2331,7 @@ def compute_fields_2(
     # =====================================================
     substrate_cache = run_or_load_structure(
         sim=sim_substrate,
-        cache_path=substrate_from_cache,
+        cache_dir=substrate_from_cache,
         structure_name="substrate",
         planes=planes,
         config=config,
@@ -2355,7 +2355,7 @@ def compute_fields_2(
     # =====================================================
     antenna_cache = run_or_load_structure(
         sim=sim_antenna,
-        cache_path=antenna_from_cache,
+        cache_dir=antenna_from_cache,
         structure_name="antenna",
         planes=planes,
         config=config,
@@ -2384,6 +2384,8 @@ def compute_fields_2(
         )
 
         compute_TRL(
+            Nfreq = config.nfreq,
+            
             empty_path=os.path.join(empty_cache, "TRL"),
             
             substrate_path=(
