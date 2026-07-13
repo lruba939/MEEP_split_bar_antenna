@@ -519,7 +519,7 @@ def compute_scattering(
     Lx = box["Lx"]
     Ly = box["Ly"]
 
-    intensity = incident_flux / (Lx * Ly)
+    intensity = np.abs(incident_flux / (Lx * Ly)) # abs because flux through z+ is negative from definition! Poyting vector is antiparallel to z+ direction.
 
     results = {}
 
