@@ -524,14 +524,36 @@ def compute_scattering(
     results = {}
 
     # =====================================================
+    # EMPTY
+    # =====================================================
+    faces = {}
+    for name in empty["monitors"]:
+        faces[name] = compute_flux(
+            empty["monitors"][name]["E"],
+            empty["monitors"][name]["H"],
+        )
+
+    power = np.zeros_like(frequency)
+
+    for flux in faces.values():
+        power += flux
+
+    cross_section = power / intensity
+
+    results["empty"] = {
+        "frequency": frequency,
+        "wavelength": wavelength,
+        "faces": faces,
+        "power": power,
+        "cross_section": cross_section,
+    }
+
+    # =====================================================
     # SUBSTRATE (substrate - empty)
     # =====================================================
     if substrate is not None:
-
         faces = {}
-
         for name in substrate["monitors"]:
-
             faces[name] = compute_flux_difference(
                 substrate["monitors"][name]["E"],
                 substrate["monitors"][name]["H"],
@@ -558,11 +580,8 @@ def compute_scattering(
     # ANTENNA (antenna - substrate)
     # =====================================================
     if antenna is not None and substrate is not None:
-
         faces = {}
-
         for name in antenna["monitors"]:
-
             faces[name] = compute_flux_difference(
                 antenna["monitors"][name]["E"],
                 antenna["monitors"][name]["H"],
