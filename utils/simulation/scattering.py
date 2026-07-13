@@ -298,7 +298,8 @@ def load_scattering(path, Nfreq):
 def save_scattering(
     frequency,
     wavelength,
-    scattering,
+    power,
+    cross_section,
     faces,
     save_path,
     save_name,
@@ -322,7 +323,6 @@ def save_scattering(
 
     save_name : str
     """
-
     os.makedirs(
         save_path,
         exist_ok=True,
@@ -331,11 +331,11 @@ def save_scattering(
     # =====================================================
     # TOTAL SCATTERING
     # =====================================================
-
     data = np.column_stack([
         frequency,
         wavelength,
-        scattering,
+        power,
+        cross_section,
     ])
 
     np.savetxt(
@@ -344,7 +344,7 @@ def save_scattering(
             f"{save_name}.dat",
         ),
         data,
-        header="frequency wavelength scattering",
+        header="frequency wavelength power cross_section",
     )
 
     np.savez(
@@ -354,13 +354,13 @@ def save_scattering(
         ),
         frequency=frequency,
         wavelength=wavelength,
-        scattering=scattering,
+        power=power,
+        cross_section=cross_section,
     )
 
     # =====================================================
     # SCATTERING PER FACE
     # =====================================================
-
     data = np.column_stack([
         frequency,
         wavelength,
@@ -394,7 +394,8 @@ def save_scattering(
 def plot_scattering(
     frequency,
     wavelength,
-    scattering,
+    power,
+    cross_section,
     faces,
     save_path,
     save_name,
@@ -405,12 +406,22 @@ def plot_scattering(
 
     line_plotter(
         wavelength,
-        scattering,
+        cross_section,
         xlabel="Wavelength [μm]",
-        ylabel="Scattering",
-        title=f"{save_name} scattering",
+        ylabel="Scattering cross section",
+        title=f"{save_name} scattering cross section",
         save_path=save_path,
-        save_name=f"{save_name}_lambda.png",
+        save_name=f"{save_name}_cross_section_lambda.png",
+    )
+
+    line_plotter(
+        wavelength,
+        power,
+        xlabel="Wavelength [μm]",
+        ylabel="Scattering power",
+        title=f"{save_name} scattering power",
+        save_path=save_path,
+        save_name=f"{save_name}_power_lambda.png",
     )
 
     multi_line_plotter_same_axes(
