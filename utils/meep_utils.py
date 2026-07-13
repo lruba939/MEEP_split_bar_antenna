@@ -13,6 +13,7 @@ from utils.sys_utils import *
 from utils.simulation.cache import *
 from utils.simulation.trl import *
 from utils.simulation.scattering import *
+from utils.simulation.gap_dft import *
 
 # !!!!!!!!! ---> from main.src.simulation import * # CANT IMPORT DUE TO CIRCULAR DEPENDENCY
 
@@ -1342,124 +1343,124 @@ def animate_enhancement_fields(config, volumes, draw_params, field='E', animate=
         )
     return 0
 
-def compute_gap_spectrum(
-    gap_data,
-    z_points,
-    freqs,
-    save_path=None,
-):
-    if not mp.am_master():
-        return
+# def compute_gap_spectrum(
+#     gap_data,
+#     z_points,
+#     freqs,
+#     save_path=None,
+# ):
+#     if not mp.am_master():
+#         return
 
-    freqs = np.array(freqs)
-    wavelength = 1.0 / freqs
-    z_points = np.array(z_points)
+#     freqs = np.array(freqs)
+#     wavelength = 1.0 / freqs
+#     z_points = np.array(z_points)
 
-    gap_dir = os.path.join(save_path, "gap_spec")
-    os.makedirs(gap_dir, exist_ok=True)
+#     gap_dir = os.path.join(save_path, "gap_spec")
+#     os.makedirs(gap_dir, exist_ok=True)
 
-    # =========================================
-    # SAVE FILES PER POINT
-    # =========================================
-    for zi, z in enumerate(z_points):
+#     # =========================================
+#     # SAVE FILES PER POINT
+#     # =========================================
+#     for zi, z in enumerate(z_points):
 
-        z_str = f"{z:.6f}".replace(".", "p")
+#         z_str = f"{z:.6f}".replace(".", "p")
 
-        for comp in ["Ex", "Ey", "Ez", "E2"]:
+#         for comp in ["Ex", "Ey", "Ez", "E2"]:
 
-            empty = gap_data[comp]["empty"][zi]
-            antenna = gap_data[comp]["antenna"][zi]
-            enh = gap_data[comp]["enh"][zi]
+#             empty = gap_data[comp]["empty"][zi]
+#             antenna = gap_data[comp]["antenna"][zi]
+#             enh = gap_data[comp]["enh"][zi]
 
-            data = np.column_stack((
-                wavelength,
-                empty,
-                antenna,
-                enh
-            ))
+#             data = np.column_stack((
+#                 wavelength,
+#                 empty,
+#                 antenna,
+#                 enh
+#             ))
 
-            header = "wavelength  empty(|E|^2)  antenna(|E|^2)  enhancement"
+#             header = "wavelength  empty(|E|^2)  antenna(|E|^2)  enhancement"
 
-            fname = os.path.join(
-                gap_dir,
-                f"{comp}_z_{z_str}.txt"
-            )
+#             fname = os.path.join(
+#                 gap_dir,
+#                 f"{comp}_z_{z_str}.txt"
+#             )
 
-            np.savetxt(fname, data, header=header)
+#             np.savetxt(fname, data, header=header)
 
-    # =========================================
-    # PLOTS
-    # =========================================
-    for comp in ["E2", "Ex", "Ey", "Ez"]:
-        plot_gap_component(
-            component_name=comp,
-            gap_data=gap_data,
-            z_points=z_points,
-            wavelength=wavelength,
-            save_path=gap_dir,
-        )
+#     # =========================================
+#     # PLOTS
+#     # =========================================
+#     for comp in ["E2", "Ex", "Ey", "Ez"]:
+#         plot_gap_component(
+#             component_name=comp,
+#             gap_data=gap_data,
+#             z_points=z_points,
+#             wavelength=wavelength,
+#             save_path=gap_dir,
+#         )
 
-def plot_gap_component(
-    component_name,
-    gap_data,
-    z_points,
-    wavelength,
-    save_path,
-):
+# def plot_gap_component(
+#     component_name,
+#     gap_data,
+#     z_points,
+#     wavelength,
+#     save_path,
+# ):
 
-    comp_empty = gap_data[component_name]["empty"]
-    comp_ant = gap_data[component_name]["antenna"]
-    comp_enh = gap_data[component_name]["enh"]
+#     comp_empty = gap_data[component_name]["empty"]
+#     comp_ant = gap_data[component_name]["antenna"]
+#     comp_enh = gap_data[component_name]["enh"]
 
-    # =========================================
-    # GENERATE COLORS FROM COLORMAP
-    # =========================================
-    cmap = plt.get_cmap("inferno")
-    n = len(z_points)
-    if n == 1:
-        colors = [cmap(0.5)]
-    else:
-        colors = [cmap(i / (n - 1)) for i in range(n)]
+#     # =========================================
+#     # GENERATE COLORS FROM COLORMAP
+#     # =========================================
+#     cmap = plt.get_cmap("inferno")
+#     n = len(z_points)
+#     if n == 1:
+#         colors = [cmap(0.5)]
+#     else:
+#         colors = [cmap(i / (n - 1)) for i in range(n)]
 
-    def make_plot(data, label_suffix, filename):
+#     def make_plot(data, label_suffix, filename):
 
-        xdata_list = [wavelength for _ in range(n)]
-        ydata_list = [data[i] for i in range(n)]
-        labels = [f"z={z:.3f}" for z in z_points]
+#         xdata_list = [wavelength for _ in range(n)]
+#         ydata_list = [data[i] for i in range(n)]
+#         labels = [f"z={z:.3f}" for z in z_points]
 
-        multi_line_plotter_same_axes(
-            xdata_list=xdata_list,
-            ydata_list=ydata_list,
-            labels=labels,
-            colors=colors,
-            xlabel="Wavelength [μm]",
-            ylabel=f"{component_name} {label_suffix}",
-            title=f"{component_name} {label_suffix} spectrum along gap",
-            legend=False,
-            save_path=save_path,
-            save_name=filename,
-        )
+#         multi_line_plotter_same_axes(
+#             xdata_list=xdata_list,
+#             ydata_list=ydata_list,
+#             labels=labels,
+#             colors=colors,
+#             xlabel="Wavelength [μm]",
+#             ylabel=f"{component_name} {label_suffix}",
+#             title=f"{component_name} {label_suffix} spectrum along gap",
+#             legend=False,
+#             save_path=save_path,
+#             save_name=filename,
+#         )
 
-    # --- EMPTY ---
-    make_plot(
-        comp_empty,
-        "|E|² (empty)",
-        f"{component_name}_empty_all_z.png"
-    )
+#     # --- EMPTY ---
+#     make_plot(
+#         comp_empty,
+#         "|E|² (empty)",
+#         f"{component_name}_empty_all_z.png"
+#     )
 
-    # --- ANTENNA ---
-    make_plot(
-        comp_ant,
-        "|E|² (antenna)",
-        f"{component_name}_antenna_all_z.png"
-    )
+#     # --- ANTENNA ---
+#     make_plot(
+#         comp_ant,
+#         "|E|² (antenna)",
+#         f"{component_name}_antenna_all_z.png"
+#     )
 
-    # --- ENHANCEMENT ---
-    make_plot(
-        comp_enh,
-        "enhancement",
-        f"{component_name}_enh_all_z.png"
-    )
+#     # --- ENHANCEMENT ---
+#     make_plot(
+#         comp_enh,
+#         "enhancement",
+#         f"{component_name}_enh_all_z.png"
+#     )
 
 def compute_harminv(
     harminv_objects,
@@ -1716,28 +1717,19 @@ def run_structure(
     # GAP DFT
     # =====================================================
     if dft_gap_spectrum and dft_gap_monitors:
-        # dft_dir = os.path.join(cache_dir, "GAP_DFT")
+        dft_dir = os.path.join(
+            cache_dir,
+            "GAP_DFT",
+        )
 
-        # os.makedirs(dft_dir, exist_ok=True)
-
-        # for name, monitor in dft_gap_monitors.items():
-        #     for comp_name, comp in (
-        #         ("Ex", mp.Ex),
-        #         ("Ey", mp.Ey),
-        #         ("Ez", mp.Ez),
-        #     ):
-        #         np.save(
-        #             os.path.join(dft_dir,f"{name}_{comp_name}.npy"),
-        #             np.array([
-        #                 sim.get_dft_array(
-        #                     monitor,
-        #                     comp,
-        #                     i,
-        #                 )
-        #                 for i in range(config.nfreq)
-        #             ]),
-        #         )
-        pass
+        for name, monitor in dft_gap_monitors["monitors"].items():
+            save_gap_dft_monitor(
+                sim,
+                monitor,
+                name,
+                config,
+                dft_dir,
+            )
 
     # =====================================================
     # HARMINV
@@ -1870,6 +1862,7 @@ def compute_fields_2(
     scattering_extra_padding_nm=(0, 0, 0),
 
     dft_gap_spectrum=False,
+    dft_object=None,
 
     harminv=False,
     harminv_objects=None,
@@ -1897,6 +1890,7 @@ def compute_fields_2(
     # =====================================================
     empty_TRL = None
     empty_scattering = None
+    empty_gap_dft = None
 
     if sim_empty is not None:
 
@@ -1917,11 +1911,19 @@ def compute_fields_2(
                 extra_padding_nm=scattering_extra_padding_nm,
             )
 
+        if dft_gap_spectrum:
+            empty_gap_dft = setup_gap_dft_monitors(
+                sim=sim_empty,
+                dft_object=dft_object,
+                config=config,
+            )
+
     # =====================================================
     # SUBSTRATE MONITORS
     # =====================================================
     substrate_TRL = None
     substrate_scattering = None
+    substrate_gap_dft = None
 
     if sim_substrate is not None:
 
@@ -1942,11 +1944,19 @@ def compute_fields_2(
                 extra_padding_nm=scattering_extra_padding_nm,
             )
 
+        if dft_gap_spectrum:
+            substrate_gap_dft = setup_gap_dft_monitors(
+                sim=sim_substrate,
+                dft_object=dft_object,
+                config=config,
+            )
+
     # =====================================================
     # ANTENNA MONITORS
     # =====================================================
     antenna_TRL = None
     antenna_scattering = None
+    antenna_gap_dft = None
 
     if sim_antenna is not None:
 
@@ -1967,6 +1977,13 @@ def compute_fields_2(
                 extra_padding_nm=scattering_extra_padding_nm,
             )
 
+        if dft_gap_spectrum:
+            antenna_gap_dft = setup_gap_dft_monitors(
+                sim=sim_antenna,
+                dft_object=dft_object,
+                config=config,
+            )
+
     # =====================================================
     # EMPTY
     # =====================================================
@@ -1985,7 +2002,7 @@ def compute_fields_2(
         scattering_monitors=empty_scattering,
 
         dft_gap_spectrum=dft_gap_spectrum,
-        dft_gap_monitors=None,
+        dft_gap_monitors=empty_gap_dft,
 
         harminv=False,
     )
@@ -2008,7 +2025,7 @@ def compute_fields_2(
         scattering_monitors=substrate_scattering,
 
         dft_gap_spectrum=dft_gap_spectrum,
-        dft_gap_monitors=None,
+        dft_gap_monitors=substrate_gap_dft,
 
         harminv=harminv,
         harminv_objects=harminv_objects,
@@ -2032,7 +2049,7 @@ def compute_fields_2(
         scattering_monitors=antenna_scattering,
 
         dft_gap_spectrum=dft_gap_spectrum,
-        dft_gap_monitors=None,
+        dft_gap_monitors=antenna_gap_dft,
 
         harminv=harminv,
         harminv_objects=harminv_objects,
@@ -2117,7 +2134,24 @@ def compute_fields_2(
             "DFT_start",
         )
 
-        # compute_gap_spectrum(...)
+        compute_gap_dft(
+            empty_path=os.path.join(empty_cache, "GAP_DFT"),
+
+            substrate_path=(
+                os.path.join(substrate_cache, "GAP_DFT")
+                if substrate_cache is not None else None
+            ),
+            
+            antenna_path=(
+                os.path.join(antenna_cache, "GAP_DFT")
+                if antenna_cache is not None else None
+            ),
+            
+            save_path=os.path.join(
+                config.path_to_save,
+                "GAP_DFT",
+            )
+        )
 
         log_system_usage(
             config.path_to_save,

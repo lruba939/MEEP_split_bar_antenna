@@ -214,3 +214,46 @@ def load_flux_monitor(
         "E": E,
         "H": H,
     }
+
+def save_dft_monitor(
+    sim,
+    monitor,
+    name,
+    path,
+    component,
+    subdirectory="",
+):
+    """
+    Save Meep DFT point monitor.
+
+    Parameters
+    ----------
+    sim : mp.Simulation
+
+    monitor : mp.DftFields
+
+    name : str
+        Monitor name, e.g. "point000".
+
+    component : str
+        Ex, Ey or Ez.
+
+    path : str
+
+    subdirectory : str
+    """
+
+    os.makedirs(
+        path,
+        exist_ok=True,
+    )
+
+    filename = os.path.join(
+        subdirectory,
+        f"{name}_{component}_dft",
+    )
+
+    sim.save_dft_fields(
+        filename,
+        monitor,
+    )
