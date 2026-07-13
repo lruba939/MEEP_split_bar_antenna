@@ -486,6 +486,7 @@ def compute_scattering(
     # LOAD
     # =====================================================
     empty = load_scattering(empty_path, Nfreq)
+    box = empty["metadata"]["SCATTERING"]
 
     substrate = None
     antenna = None
@@ -504,8 +505,8 @@ def compute_scattering(
 
     incident_flux = empty["monitors"]["z+"]["flux"]
 
-    Lx = empty["metadata"]["Lx"]
-    Ly = empty["metadata"]["Ly"]
+    Lx = box["Lx"]
+    Ly = box["Ly"]
 
     intensity = incident_flux / (Lx * Ly)
 
