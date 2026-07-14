@@ -78,7 +78,7 @@ def save_metadata(
     # DFT (future)
     # =====================================================
     if dft_gap_monitors is not None:
-        metadata["DFT"] = dft_gap_monitors["metadata"]
+        metadata["GAP_DFT"] = dft_gap_monitors["metadata"]
 
     with open(
         os.path.join(cache_dir, "metadata.json"),
