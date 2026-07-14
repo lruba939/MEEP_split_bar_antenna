@@ -608,14 +608,11 @@ def compute_scattering(
     # SAVE
     # =====================================================
     if save_path is not None:
-
         os.makedirs(
             save_path,
             exist_ok=True,
         )
-
         for name, data in results.items():
-
             save_scattering(
                 frequency=data["frequency"],
                 wavelength=data["wavelength"],
@@ -625,7 +622,6 @@ def compute_scattering(
                 save_path=save_path,
                 save_name=name,
             )
-
             plot_scattering(
                 frequency=data["frequency"],
                 wavelength=data["wavelength"],
@@ -635,5 +631,4 @@ def compute_scattering(
                 save_path=save_path,
                 save_name=name,
             )
-
     return results

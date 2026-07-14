@@ -492,16 +492,16 @@ def compute_gap_dft(
     # SAVE
     # =====================================================
     if save_path is not None:
-        gap_dft_dir = os.path.join(
+        os.makedirs(
             save_path,
-            "gap_dft",
+            exist_ok=True,
         )
         save_gap_dft(
             results,
-            gap_dft_dir,
+            save_path,
         )
         plot_gap_dft(
             results,
-            gap_dft_dir,
+            save_path,
         )
     return results
