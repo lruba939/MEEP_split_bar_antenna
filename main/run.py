@@ -81,6 +81,8 @@ def run():
 
     experiments = {
         "bowtie_substrate": bowtie_substrate_experiment,
+        "bowtie_substrate_in_PML": bowtie_substrate_in_PML_experiment,
+        "bowtie_substrate_Z_in_absorber": bowtie_substrate_Z_in_absorber_experiment,
         "bowtie_lt": bowtie_substrate_experiment_LT,
         "bowtie_mir": bowtie_substrate_experiment_MIR,
         "bowtie_only": bowtie_substrate_ONLY_experiment,

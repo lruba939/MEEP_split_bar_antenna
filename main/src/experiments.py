@@ -24,8 +24,8 @@ def bowtie_substrate_experiment(
     # =====================================================
     config = SimulationConfig()
 
-    config.resolution = 200
-    config.sim_time = 18000 / xm
+    config.resolution = 500
+    config.sim_time = 20000 / xm
     config.sim_time_step = 100 / xm
 
     config.lambda0 = 660 / xm
@@ -48,10 +48,10 @@ def bowtie_substrate_experiment(
     substrate = Bar(
         length=800/xm,
         width=800/xm,
-        thickness=config.pml*pml_factor,
+        thickness=100/xm,
         material_name=material_name,
-        z_offset=-(30/2.0+config.pml*1e3*pml_factor/2.0)/xm,
-        radius=10/xm,
+        z_offset=-(30/2.0+100/2.0)/xm,
+        radius=0/xm,
     )
 
     geometry_substrate = substrate.build_geometry()
@@ -60,9 +60,9 @@ def bowtie_substrate_experiment(
     # config.pad = 0
     config.pad = 80/xm
     config.cell_size = [
-        substrate.length+config.pad*2+config.pml*2,   # x
-        substrate.width+config.pad*2+config.pml*2,   # y
-        substrate.thickness+Top.thickness + pml_factor*config.pml    # z
+        substrate.length + config.pad*2 + config.pml*2,   # x
+        substrate.width + config.pad*2 + config.pml*2,   # y
+        substrate.thickness+Top.thickness + config.pad*2 + config.pml*2    # z
     ]
     cell = make_cell(config=config)
 
@@ -72,20 +72,10 @@ def bowtie_substrate_experiment(
     #     0.0 / xm    # z
     # ]
     config.src_size = [
-        1500 / xm,  # x
-        1500 / xm,  # y
+        700 / xm,  # x
+        700 / xm,  # y
         0.0 / xm    # z
     ]
-    # config.src_size = [
-    #     config.cell_size[0],  # x
-    #     config.cell_size[1],  # y
-    #     0.0 / xm    # z
-    # ]
-    # config.src_size = [
-    #     700/xm,  # x
-    #     700/xm,  # y
-    #     0.0 / xm    # z
-    # ]
 
     #!!!
     config.src_is_integrated = True
@@ -93,15 +83,15 @@ def bowtie_substrate_experiment(
     config.src_center = [
         0.0,    # x
         0.0,    # y
-        config.cell_size[2]/2.0-1.1*config.pml  # z
+        config.cell_size[2]/2.0-1.04*config.pml  # z
     ]
 
     config.nfreq = 500
     # config.z_reflection = config.cell_size[2]/2.0-1.20*config.pml
     # config.z_transmission = -config.cell_size[2]/2.0+config.pml+15/xm
 
-    config.z_reflection = 120 / xm
-    config.z_transmission = -120 / xm
+    config.z_reflection = 70 / xm
+    config.z_transmission = -60 / xm
     # config.x_flux_monitor = 400 / xm
     # config.y_flux_monitor = 400 / xm
     config.x_flux_monitor = 400 / xm
@@ -217,55 +207,592 @@ def bowtie_substrate_experiment(
 
         calc_enh=True,
     )
-    ########################
-    draw_params = {
-        "XY": {"x_zoom": 1,
-               "y_zoom": 1,
-               "roi": {
-                    "center": (0, 0),
-                    "width": Top.gap * 1e3,
-                    "height":Top.gap * 1e3,
-                },
-        },
-        "XZ": {"x_zoom": 1,
-               "y_zoom": 1,
-               "roi": {
-                    "center": (0, 0),
-                    "width": Top.gap * 1e3,
-                    "height": Top.thickness * 1e3,
-                },
-        },
-        "YZ": {"x_zoom": 1,
-               "y_zoom": 1,
-               "roi": {
-                    "center": (0, 0),
-                    "width": Top.gap * 1e3,
-                    "height": Top.thickness * 1e3,
-                },
-        },
-    }
-    enhancement_root = os.path.join(
+    # ########################
+    # draw_params = {
+    #     "XY": {"x_zoom": 1,
+    #            "y_zoom": 1,
+    #            "roi": {
+    #                 "center": (0, 0),
+    #                 "width": Top.gap * 1e3,
+    #                 "height":Top.gap * 1e3,
+    #             },
+    #     },
+    #     "XZ": {"x_zoom": 1,
+    #            "y_zoom": 1,
+    #            "roi": {
+    #                 "center": (0, 0),
+    #                 "width": Top.gap * 1e3,
+    #                 "height": Top.thickness * 1e3,
+    #             },
+    #     },
+    #     "YZ": {"x_zoom": 1,
+    #            "y_zoom": 1,
+    #            "roi": {
+    #                 "center": (0, 0),
+    #                 "width": Top.gap * 1e3,
+    #                 "height": Top.thickness * 1e3,
+    #             },
+    #     },
+    # }
+    # enhancement_root = os.path.join(
+    #     config.path_to_save,
+    #     "cache",
+    #     "enhancement",
+    # )
+    # for enhancement_name in (
+    #     "substrate_over_empty",
+    #     "antenna_over_empty",
+    #     "antenna_over_substrate",
+    # ):
+    #     animate_enhancement_fields(
+    #         enhancement_path=os.path.join(
+    #             enhancement_root,
+    #             enhancement_name,
+    #         ),
+    #     enhancement_name=enhancement_name,
+    #     config=config,
+    #     volumes=antenna_vols,
+    #     draw_params=draw_params,
+    #     field="E",
+    #     animate=True,
+    # )
+
+    ########################    
+    log_system_usage(
         config.path_to_save,
-        "cache",
-        "enhancement",
+        "END",
     )
-    for enhancement_name in (
-        "substrate_over_empty",
-        "antenna_over_empty",
-        "antenna_over_substrate",
+    #######################
+    return 0
+
+def bowtie_substrate_in_PML_experiment(
+    material_name,
+    COMMENT=None,
+    empty_from_cache=None,
+    substrate_from_cache=None,
+    antenna_from_cache=None
     ):
-        animate_enhancement_fields(
-            enhancement_path=os.path.join(
-                enhancement_root,
-                enhancement_name,
-            ),
-        enhancement_name=enhancement_name,
-        config=config,
-        volumes=antenna_vols,
-        draw_params=draw_params,
-        field="E",
-        animate=True,
+    # =====================================================
+    config = SimulationConfig()
+
+    config.resolution = 500
+    config.sim_time = 20000 / xm
+    config.sim_time_step = 100 / xm
+
+    config.lambda0 = 660 / xm
+    config.frequency_width = 1.0
+
+    config.pml = 350/xm
+    pml_factor = 1.5
+    
+    gap = 6
+
+    # =====================================================
+    Top = BowTieEquilateral(
+        gap=gap/xm,
+        length=86.6/xm, # <- to have about 100 nm in width
+        thickness=30/xm,
+        radius=5/xm,
+        material_name="Au",
+        z_offset=0.0
     )
+    substrate = Bar(
+        length=1200/xm,
+        width=1200/xm,
+        thickness=config.pml*pml_factor,
+        material_name=material_name,
+        z_offset=-(30/2.0+config.pml*1e3*pml_factor/2.0)/xm,
+        radius=10/xm,
+    )
+
+    geometry_substrate = substrate.build_geometry()
+    geometry_antenna = Top.build_geometry() + substrate.build_geometry()
+
+    # config.pad = 0
+    config.pad = 80/xm
+    config.cell_size = [
+        substrate.length,   # x
+        substrate.width,   # y
+        substrate.thickness+Top.thickness + pml_factor*config.pml    # z
+    ]
+    cell = make_cell(config=config)
+
+    # config.src_size = [
+    #     Top.length*3,  # x
+    #     Top.length*3,  # y
+    #     0.0 / xm    # z
+    # ]
+    config.src_size = [
+        1200 / xm,  # x
+        1200 / xm,  # y
+        0.0 / xm    # z
+    ]
+    # config.src_size = [
+    #     config.cell_size[0],  # x
+    #     config.cell_size[1],  # y
+    #     0.0 / xm    # z
+    # ]
+    # config.src_size = [
+    #     700/xm,  # x
+    #     700/xm,  # y
+    #     0.0 / xm    # z
+    # ]
+
+    #!!!
+    config.src_is_integrated = True
+    
+    config.src_center = [
+        0.0,    # x
+        0.0,    # y
+        config.cell_size[2]/2.0-1.1*config.pml  # z
+    ]
+
+    config.nfreq = 500
+    # config.z_reflection = config.cell_size[2]/2.0-1.20*config.pml
+    # config.z_transmission = -config.cell_size[2]/2.0+config.pml+15/xm
+
+    config.z_reflection = 120 / xm
+    config.z_transmission = -120 / xm
+    # config.x_flux_monitor = 400 / xm
+    # config.y_flux_monitor = 400 / xm
+    config.x_flux_monitor = 260 / xm
+    config.y_flux_monitor = 260 / xm
+
+    antenna_vols = VolumeSetROI(cell, antenna=Top)
+
+    sim_empty = mp.Simulation(
+        cell_size=cell,
+        boundary_layers=[mp.PML(config.pml)],
+        geometry=[],
+        sources=make_source(config),
+        resolution = config.resolution,
+        k_point = mp.Vector3(),
+        symmetries=config.symmetries,
+        dimensions=3
+        )
+    sim_substrate = mp.Simulation(
+        cell_size=cell,
+        boundary_layers=[mp.PML(config.pml)],
+        geometry=geometry_substrate,
+        sources=make_source(config),
+        resolution = config.resolution,
+        k_point = mp.Vector3(),
+        symmetries=config.symmetries,
+        dimensions=3
+        )
+    sim_antenna = mp.Simulation(
+        cell_size=cell,
+        boundary_layers=[mp.PML(config.pml)],
+        geometry=geometry_antenna,
+        sources=make_source(config),
+        resolution = config.resolution,
+        k_point = mp.Vector3(),
+        symmetries=config.symmetries,
+        dimensions=3
+        )
+    # =====================================================
+    SIM_NAME = build_folder_name(
+        structure="bowtie",
+        wavelength_nm=config.lambda0 * xm,
+        gap_nm=Top.gap * xm,
+        antenna_material=Top.material_name,
+        substrate_material=substrate.material_name,
+        L=Top.length * xm,
+        T=Top.thickness * xm,
+        R=Top.radius * xm
+    )
+
+    config.path_to_save = create_directory(SIM_NAME)
+
+    ########################
+    log_system_usage(
+        config.path_to_save,
+        "after_mp.Simulation",
+    )
+    #######################
+    # =====================================================
+    save_and_show_config(config, [Top, substrate], COMMENT=COMMENT, empty_cache=empty_from_cache, substrate_cache=substrate_from_cache, antenna_cache=antenna_from_cache)
+    # =====================================================
+    print_task(1, "2D projections.")
+    for sim, name_prefix in {
+        sim_empty: "empty",
+        sim_antenna: "antenna",
+        sim_substrate: "substrate",
+    }.items():
+        for plane in ["XY", "XZ", "YZ"]:
+            Name2D = f"{name_prefix}_vis_{plane}.png"
+            save_2D_plot(
+                sim,
+                antenna_vols.vis_volume[plane],
+                save_name=Name2D,
+                path_to_save=config.path_to_save,
+                IMG_CLOSE=config.IMG_CLOSE,
+                config=config
+            )
+        for plane in ["XY", "XZ", "YZ"]:
+            Name2D = f"{name_prefix}_roi_{plane}.png"
+            save_2D_plot(
+                sim,
+                antenna_vols.volume[plane],
+                save_name=Name2D,
+                path_to_save=config.path_to_save,
+                IMG_CLOSE=config.IMG_CLOSE
+            )
+    # =====================================================
+    compute_fields_2(
+        sim_empty=sim_empty,
+        empty_from_cache=empty_from_cache,
+        
+        sim_substrate=sim_substrate,
+        substrate_from_cache=substrate_from_cache,
+        
+        sim_antenna=sim_antenna,
+        antenna_from_cache=antenna_from_cache,
+        
+        volumes=antenna_vols,
+        config=config,
+
+        TRL=True,
+        # TRL_X_size=config.cell_size[0],
+        # TRL_Y_size=config.cell_size[1],
+        TRL_X_size=config.x_flux_monitor,
+        TRL_Y_size=config.y_flux_monitor,
+
+        scattering=True,
+        scattering_object=Top,
+
+        dft_gap_spectrum=True,
+        dft_object=Top,
+
+        # harminv=True,
+
+        calc_enh=True,
+    )
+    # ########################
+    # draw_params = {
+    #     "XY": {"x_zoom": 1,
+    #            "y_zoom": 1,
+    #            "roi": {
+    #                 "center": (0, 0),
+    #                 "width": Top.gap * 1e3,
+    #                 "height":Top.gap * 1e3,
+    #             },
+    #     },
+    #     "XZ": {"x_zoom": 1,
+    #            "y_zoom": 1,
+    #            "roi": {
+    #                 "center": (0, 0),
+    #                 "width": Top.gap * 1e3,
+    #                 "height": Top.thickness * 1e3,
+    #             },
+    #     },
+    #     "YZ": {"x_zoom": 1,
+    #            "y_zoom": 1,
+    #            "roi": {
+    #                 "center": (0, 0),
+    #                 "width": Top.gap * 1e3,
+    #                 "height": Top.thickness * 1e3,
+    #             },
+    #     },
+    # }
+    # enhancement_root = os.path.join(
+    #     config.path_to_save,
+    #     "cache",
+    #     "enhancement",
+    # )
+    # for enhancement_name in (
+    #     "substrate_over_empty",
+    #     "antenna_over_empty",
+    #     "antenna_over_substrate",
+    # ):
+    #     animate_enhancement_fields(
+    #         enhancement_path=os.path.join(
+    #             enhancement_root,
+    #             enhancement_name,
+    #         ),
+    #     enhancement_name=enhancement_name,
+    #     config=config,
+    #     volumes=antenna_vols,
+    #     draw_params=draw_params,
+    #     field="E",
+    #     animate=True,
+    # )
+
+    ########################    
+    log_system_usage(
+        config.path_to_save,
+        "END",
+    )
+    #######################
+    return 0
+
+def bowtie_substrate_Z_in_absorber_experiment(
+    material_name,
+    COMMENT=None,
+    empty_from_cache=None,
+    substrate_from_cache=None,
+    antenna_from_cache=None
+    ):
+    # =====================================================
+    config = SimulationConfig()
+
+    config.resolution = 500
+    config.sim_time = 20000 / xm
+    config.sim_time_step = 100 / xm
+
+    config.lambda0 = 660 / xm
+    config.frequency_width = 1.0
+
+    config.pml = 350/xm
+    pml_factor = 1.5
+    
+    gap = 6
+
+    # =====================================================
+    Top = BowTieEquilateral(
+        gap=gap/xm,
+        length=86.6/xm, # <- to have about 100 nm in width
+        thickness=30/xm,
+        radius=5/xm,
+        material_name="Au",
+        z_offset=0.0
+    )
+    substrate = Bar(
+        length=800/xm,
+        width=800/xm,
+        thickness=config.pml*pml_factor,
+        material_name=material_name,
+        z_offset=-(30/2.0+config.pml*1e3*pml_factor/2.0)/xm,
+        radius=10/xm,
+    )
+
+    geometry_substrate = substrate.build_geometry()
+    geometry_antenna = Top.build_geometry() + substrate.build_geometry()
+
+    # config.pad = 0
+    config.pad = 80/xm
+    config.cell_size = [
+        substrate.length+config.pad*2+config.pml*2,   # x
+        substrate.width+config.pad*2+config.pml*2,   # y
+        substrate.thickness+Top.thickness + pml_factor*config.pml    # z
+    ]
+    cell = make_cell(config=config)
+
+    # config.src_size = [
+    #     Top.length*3,  # x
+    #     Top.length*3,  # y
+    #     0.0 / xm    # z
+    # ]
+    config.src_size = [
+        750 / xm,  # x
+        750 / xm,  # y
+        0.0 / xm    # z
+    ]
+    # config.src_size = [
+    #     config.cell_size[0],  # x
+    #     config.cell_size[1],  # y
+    #     0.0 / xm    # z
+    # ]
+    # config.src_size = [
+    #     700/xm,  # x
+    #     700/xm,  # y
+    #     0.0 / xm    # z
+    # ]
+
+    #!!!
+    config.src_is_integrated = True
+    
+    config.src_center = [
+        0.0,    # x
+        0.0,    # y
+        config.cell_size[2]/2.0-1.1*config.pml  # z
+    ]
+
+    config.nfreq = 500
+    # config.z_reflection = config.cell_size[2]/2.0-1.20*config.pml
+    # config.z_transmission = -config.cell_size[2]/2.0+config.pml+15/xm
+
+    config.z_reflection = 120 / xm
+    config.z_transmission = -120 / xm
+    # config.x_flux_monitor = 400 / xm
+    # config.y_flux_monitor = 400 / xm
+    config.x_flux_monitor = 400 / xm
+    config.y_flux_monitor = 400 / xm
+
+    antenna_vols = VolumeSetROI(cell, antenna=Top)
+
+    sim_empty = mp.Simulation(
+        cell_size=cell,
+        boundary_layers=[
+            mp.PML(config.pml, direction=mp.X),
+            mp.PML(config.pml, direction=mp.Y),
+            mp.PML(config.pml, direction=mp.Z, side=mp.High),
+            mp.Absorber(config.pml, direction=mp.Z, side=mp.Low),
+        ],
+        geometry=[],
+        sources=make_source(config),
+        resolution = config.resolution,
+        k_point = mp.Vector3(),
+        symmetries=config.symmetries,
+        dimensions=3
+        )
+    sim_substrate = mp.Simulation(
+        cell_size=cell,
+        boundary_layers=[
+            mp.PML(config.pml, direction=mp.X),
+            mp.PML(config.pml, direction=mp.Y),
+            mp.PML(config.pml, direction=mp.Z, side=mp.High),
+            mp.Absorber(config.pml, direction=mp.Z, side=mp.Low),
+        ],
+        geometry=geometry_substrate,
+        sources=make_source(config),
+        resolution = config.resolution,
+        k_point = mp.Vector3(),
+        symmetries=config.symmetries,
+        dimensions=3
+        )
+    sim_antenna = mp.Simulation(
+        cell_size=cell,
+        boundary_layers=[
+            mp.PML(config.pml, direction=mp.X),
+            mp.PML(config.pml, direction=mp.Y),
+            mp.PML(config.pml, direction=mp.Z, side=mp.High),
+            mp.Absorber(config.pml, direction=mp.Z, side=mp.Low),
+        ],
+        geometry=geometry_antenna,
+        sources=make_source(config),
+        resolution = config.resolution,
+        k_point = mp.Vector3(),
+        symmetries=config.symmetries,
+        dimensions=3
+        )
+    # =====================================================
+    SIM_NAME = build_folder_name(
+        structure="bowtie",
+        wavelength_nm=config.lambda0 * xm,
+        gap_nm=Top.gap * xm,
+        antenna_material=Top.material_name,
+        substrate_material=substrate.material_name,
+        L=Top.length * xm,
+        T=Top.thickness * xm,
+        R=Top.radius * xm
+    )
+
+    config.path_to_save = create_directory(SIM_NAME)
+
+    ########################
+    log_system_usage(
+        config.path_to_save,
+        "after_mp.Simulation",
+    )
+    #######################
+    # =====================================================
+    save_and_show_config(config, [Top, substrate], COMMENT=COMMENT, empty_cache=empty_from_cache, substrate_cache=substrate_from_cache, antenna_cache=antenna_from_cache)
+    # =====================================================
+    print_task(1, "2D projections.")
+    for sim, name_prefix in {
+        sim_empty: "empty",
+        sim_antenna: "antenna",
+        sim_substrate: "substrate",
+    }.items():
+        for plane in ["XY", "XZ", "YZ"]:
+            Name2D = f"{name_prefix}_vis_{plane}.png"
+            save_2D_plot(
+                sim,
+                antenna_vols.vis_volume[plane],
+                save_name=Name2D,
+                path_to_save=config.path_to_save,
+                IMG_CLOSE=config.IMG_CLOSE,
+                config=config
+            )
+        for plane in ["XY", "XZ", "YZ"]:
+            Name2D = f"{name_prefix}_roi_{plane}.png"
+            save_2D_plot(
+                sim,
+                antenna_vols.volume[plane],
+                save_name=Name2D,
+                path_to_save=config.path_to_save,
+                IMG_CLOSE=config.IMG_CLOSE
+            )
+    # =====================================================
+    compute_fields_2(
+        sim_empty=sim_empty,
+        empty_from_cache=empty_from_cache,
+        
+        sim_substrate=sim_substrate,
+        substrate_from_cache=substrate_from_cache,
+        
+        sim_antenna=sim_antenna,
+        antenna_from_cache=antenna_from_cache,
+        
+        volumes=antenna_vols,
+        config=config,
+
+        TRL=True,
+        # TRL_X_size=config.cell_size[0],
+        # TRL_Y_size=config.cell_size[1],
+        TRL_X_size=config.x_flux_monitor,
+        TRL_Y_size=config.y_flux_monitor,
+
+        scattering=True,
+        scattering_object=Top,
+
+        dft_gap_spectrum=True,
+        dft_object=Top,
+
+        # harminv=True,
+
+        calc_enh=True,
+    )
+    # ########################
+    # draw_params = {
+    #     "XY": {"x_zoom": 1,
+    #            "y_zoom": 1,
+    #            "roi": {
+    #                 "center": (0, 0),
+    #                 "width": Top.gap * 1e3,
+    #                 "height":Top.gap * 1e3,
+    #             },
+    #     },
+    #     "XZ": {"x_zoom": 1,
+    #            "y_zoom": 1,
+    #            "roi": {
+    #                 "center": (0, 0),
+    #                 "width": Top.gap * 1e3,
+    #                 "height": Top.thickness * 1e3,
+    #             },
+    #     },
+    #     "YZ": {"x_zoom": 1,
+    #            "y_zoom": 1,
+    #            "roi": {
+    #                 "center": (0, 0),
+    #                 "width": Top.gap * 1e3,
+    #                 "height": Top.thickness * 1e3,
+    #             },
+    #     },
+    # }
+    # enhancement_root = os.path.join(
+    #     config.path_to_save,
+    #     "cache",
+    #     "enhancement",
+    # )
+    # for enhancement_name in (
+    #     "substrate_over_empty",
+    #     "antenna_over_empty",
+    #     "antenna_over_substrate",
+    # ):
+    #     animate_enhancement_fields(
+    #         enhancement_path=os.path.join(
+    #             enhancement_root,
+    #             enhancement_name,
+    #         ),
+    #     enhancement_name=enhancement_name,
+    #     config=config,
+    #     volumes=antenna_vols,
+    #     draw_params=draw_params,
+    #     field="E",
+    #     animate=True,
+    # )
 
     ########################    
     log_system_usage(
