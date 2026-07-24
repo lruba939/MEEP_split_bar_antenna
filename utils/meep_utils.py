@@ -10,6 +10,8 @@ from utils.logger import append_time_to_file
 
 from utils.sys_utils import *
 
+from utils.enhancement import *
+
 from utils.simulation.cache import *
 from utils.simulation.trl import *
 from utils.simulation.scattering import *
@@ -247,354 +249,6 @@ def collect_fields_with_output(
     )
     #######################
     return sim
-
-def enhancement_divided_by_maxes_arr(
-    h5_target,
-    h5_reference,
-    path=None,
-    save_to=None,
-    dataset_target=None,
-    dataset_reference=None,
-    z_index=None,
-    xzeros=0,
-    yzeros=None,
-    eps=1e-12,
-    out_dataset_name="enhancement",
-):
-    """
-    Compute time-dependent enhancement normalized by the time-maximum
-    of a reference field.
-
-    MATHEMATICAL DEFINITION
-    -----------------------
-    For each spatial point (x, y) and time t:
-
-        enhancement[x, y, t] = A[x, y, t] / max_t(B[x, y, t])
-
-    where:
-        A[x,y,t] = sum_i (A_i[x,y,t]^2)
-        B[x,y,t] = sum_i (B_i[x,y,t]^2)
-
-    The summation index i runs over the provided field components
-    (e.g. Ex, Ey, Ez). Any subset of components is allowed, but
-    h5_target and h5_reference MUST have identical structure.
-
-    FIXED DATA ASSUMPTIONS
-    ---------------------
-    * All datasets are stored as:
-          data[x, y, time]
-    * No axis reordering or transposition is performed.
-    * Any Z slicing is applied BEFORE computations.
-
-    PARAMETERS
-    ----------
-    h5_target : str or list[str]
-        HDF5 filename(s) of the target field components.
-        Can be:
-            - single string (one field component)
-            - list/tuple of strings (multiple components)
-
-    h5_reference : str or list[str]
-        HDF5 filename(s) of the reference field components.
-        MUST mirror the structure of h5_target exactly
-        (same type and same list length).
-
-    dataset_target : str or None, optional
-        Dataset name inside the target HDF5 files.
-        If None, the first dataset in each file is used.
-
-    dataset_reference : str or None, optional
-        Dataset name inside the reference HDF5 files.
-        If None, the first dataset in each file is used.
-
-    z_index : int or None, optional
-        Index of the Z slice to extract if the dataset has shape:
-            data[x, y, z, time]
-        If such a Z axis exists and z_index is None, an error is raised.
-
-    xzeros : int, optional
-        Number of grid points to overwrite at left/right boundaries
-        of the reference field (PML cleanup).
-
-    yzeros : int or None, optional
-        Number of grid points to overwrite at bottom/top boundaries.
-        If None, defaults to xzeros.
-
-    eps : float, optional
-        Small regularization constant added to the denominator to
-        avoid division by zero.
-
-    path : str or None, optional
-        Directory in which all input HDF5 files are searched AND
-        where the output file is written.
-        If None, filenames are interpreted as given.
-
-    save_to : str or None, optional
-        Name of the output HDF5 file (written inside `path`).
-        If None, no file is saved.
-
-    out_dataset_name : str, optional
-        Dataset name under which the enhancement array is stored
-        in the output HDF5 file.
-
-    RETURNS
-    -------
-    enhancement : np.ndarray
-        Array of shape (x, y, time) containing the enhancement field.
-
-    B_max : np.ndarray
-        Array of shape (x, y) containing max_t(B[x,y,t]).
-    """
-    
-    # ---------------------------
-    # Helpers
-    # ---------------------------
-    def _open_all(h5_input, dataset_name):
-        if isinstance(h5_input, (list, tuple)):
-            files = []
-            dsets = []
-            for h5f in h5_input:
-                f = h5py.File(os.path.join(path, h5f) if path else h5f, "r")
-                name = dataset_name or list(f.keys())[0]
-                d = f[name]
-                files.append(f)
-                dsets.append(d)
-            return files, dsets
-        else:
-            f = h5py.File(os.path.join(path, h5_input) if path else h5_input, "r")
-            name = dataset_name or list(f.keys())[0]
-            return [f], [f[name]]
-
-    def _get_frame_sum_sq(dsets, t):
-        acc = None
-        for d in dsets:
-            if d.ndim == 4:
-                if z_index is None:
-                    raise ValueError("Z axis detected but z_index not provided")
-                frame = d[:, :, z_index, t]
-            else:
-                frame = d[:, :, t]
-
-            if acc is None:
-                acc = frame**2
-            else:
-                acc += frame**2
-        return acc
-
-    # ---------------------------
-    # Open files
-    # ---------------------------
-    fA, dA = _open_all(h5_target, dataset_target)
-    fB, dB = _open_all(h5_reference, dataset_reference)
-
-    # ---------------------------
-    # Shape
-    # ---------------------------
-    for da, db in zip(dA, dB):
-        if da.shape != db.shape:
-            raise RuntimeError(
-                "Enhancement ERROR: target and reference datasets have different shapes.\n"
-                f"Target: {da.shape}, Reference: {db.shape}"
-            )
-
-    sample = dA[0]
-    if sample.ndim == 4:
-        Nx, Ny, Nz, Nt = sample.shape
-    else:
-        Nx, Ny, Nt = sample.shape
-
-    if yzeros is None:
-        yzeros = xzeros
-
-    xzeros = max(0, min(xzeros, Nx // 2))
-    yzeros = max(0, min(yzeros, Ny // 2))
-
-    # ---------------------------
-    # PASS 1: compute B_max
-    # ---------------------------
-    B_max = np.zeros((Nx, Ny), dtype=float)
-
-    for t in range(Nt):
-        B_frame = _get_frame_sum_sq(dB, t)
-
-        # PML cleanup (on-the-fly)
-        if xzeros > 0 or yzeros > 0:
-            B_frame[:xzeros, :] = 1.0
-            B_frame[-xzeros:, :] = 1.0
-            B_frame[:, :yzeros] = 1.0
-            B_frame[:, -yzeros:] = 1.0
-
-        np.maximum(B_max, B_frame, out=B_max)
-
-    # ---------------------------
-    # PASS 2: compute enhancement
-    # ---------------------------
-    enhancement = np.empty((Nx, Ny, Nt), dtype=float)
-
-    denom = B_max + eps
-
-    for t in range(Nt):
-        A_frame = _get_frame_sum_sq(dA, t)
-        enhancement[:, :, t] = A_frame / denom
-
-    # ---------------------------
-    # Save
-    # ---------------------------
-    if save_to is not None:
-        save_path = os.path.join(path, save_to) if path else save_to
-        with h5py.File(save_path, "w") as f:
-            f.create_dataset(out_dataset_name, data=enhancement)
-            f.create_dataset("reference_max", data=B_max)
-
-    # ---------------------------
-    # Cleanup
-    # ---------------------------
-    for f in fA + fB:
-        f.close()
-    gc.collect()
-    
-    return enhancement, B_max
-
-def analyze_roi_from_h5_physical(
-    h5_filename,
-    roi,
-    load_h5data_path=None,
-    dataset_name=None,
-
-    # --- physical axis definition ---
-    x_phys_range=None,   # (xmin, xmax)
-    y_phys_range=None,   # (ymin, ymax)
-
-    # --- PML / border crop ---
-    xzeros=0,
-    yzeros=None,
-):
-    """
-    Analyze mean field value inside a physical ROI over time
-    using the FULL simulation domain (no zoom).
-
-    Parameters
-    ----------
-    h5_filename : str
-        Name of HDF5 file with data[x,y,time].
-
-    roi : dict
-        ROI definition:
-        {
-            "type": "rectangle",
-            "center": (x, y),
-            "width": w,
-            "height": h,
-        }
-
-    Returns
-    -------
-    frame_mean : ndarray (Nt, 2)
-        [[frame_index, mean_value], ...]
-
-    frame_max : ndarray (2,)
-        [frame_index_of_max, max_mean_value]
-    """
-    # ---------------------------
-    # Sanity
-    # ---------------------------
-    if x_phys_range is None or y_phys_range is None:
-        raise ValueError("Provide x_phys_range and y_phys_range")
-
-    if roi["type"] != "rectangle":
-        raise NotImplementedError("Only rectangular ROI supported")
-
-    h5_path = (
-        os.path.join(load_h5data_path, h5_filename)
-        if load_h5data_path is not None
-        else h5_filename
-    )
-
-    # ---------------------------
-    # OPEN FILE (lazy!)
-    # ---------------------------
-    f = h5py.File(h5_path, "r")
-
-    if dataset_name is None:
-        dataset_name = list(f.keys())[0]
-
-    dset = f[dataset_name]
-
-    if dset.ndim != 3:
-        raise ValueError(f"Expected data[x,y,time], got {dset.shape}")
-
-    Nx0, Ny0, Nt = dset.shape
-
-    if yzeros is None:
-        yzeros = xzeros
-
-    # ---------------------------
-    # CROPPING
-    # ---------------------------
-    xzeros = min(xzeros, Nx0 // 2)
-    yzeros = min(yzeros, Ny0 // 2)
-
-    xs = slice(xzeros, Nx0 - xzeros)
-    ys = slice(yzeros, Ny0 - yzeros)
-
-    Nx = Nx0 - 2 * xzeros
-    Ny = Ny0 - 2 * yzeros
-
-    # ---------------------------
-    # PHYSICAL AXES
-    # ---------------------------
-    x_min0, x_max0 = x_phys_range
-    y_min0, y_max0 = y_phys_range
-
-    x_phys = np.linspace(x_min0, x_max0, Nx)
-    y_phys = np.linspace(y_min0, y_max0, Ny)
-
-    # ---------------------------
-    # ROI mask
-    # ---------------------------
-    roi_mask = roi_mask_from_rectangle(
-        x_phys,
-        y_phys,
-        center=roi["center"],
-        width=roi["width"],
-        height=roi["height"],
-    )
-
-    if roi_mask.shape != (Nx, Ny):
-        raise ValueError(
-            f"ROI mask shape {roi_mask.shape} != {(Nx, Ny)}"
-        )
-
-    # ---------------------------
-    # PRECOMPUTE indices
-    # ---------------------------
-    roi_idx = np.where(roi_mask)
-
-    # ---------------------------
-    # LOOP over time (STREAMING)
-    # ---------------------------
-    mean_vals = np.empty(Nt, dtype=float)
-
-    for t in range(Nt):
-        frame = dset[xs, ys, t]
-        mean_vals[t] = frame[roi_idx].mean()
-
-    # ---------------------------
-    # RESULTS
-    # ---------------------------
-    frames = np.arange(Nt)
-    frame_mean = np.column_stack((frames, mean_vals))
-
-    t_max = int(np.argmax(mean_vals))
-    frame_max = np.array([t_max, mean_vals[t_max]])
-
-    # ---------------------------
-    # CLEANUP
-    # ---------------------------
-    f.close()
-    gc.collect()
-
-    return frame_mean, frame_max
 
 ##############################################
 def compute_fields(
@@ -1118,350 +772,6 @@ def compute_fields(
 #                 )
 #     return 0
 
-def get_phys_ranges(bounds, plane):
-    if plane == "XY":
-        return [bounds["xmin"], bounds["xmax"]], [bounds["ymin"], bounds["ymax"]]
-
-    elif plane == "XZ":
-        return [bounds["xmin"], bounds["xmax"]], [bounds["zmin"], bounds["zmax"]]
-
-    elif plane == "YZ":
-        return [bounds["ymin"], bounds["ymax"]], [bounds["zmin"], bounds["zmax"]]
-
-    else:
-        raise ValueError(f"Unknown plane: {plane}")
-
-def animate_enhancement_fields(config, volumes, draw_params, field='E', animate=True):
-    """
-    - Animate field enhancement for XY / XZ / YZ planes
-    - Plot max-frame field maps with structure + ROI
-    - Collect mean |E|^2 enchancement in gap vs time for each plane
-    - Plot all mean curves on a single axes using multi_line_plotter_same_axes
-    """
-    if mp.am_master():
-        valid_field = ["E", "H"]
-        
-        if field not in valid_field:
-            raise ValueError(f"field must be one of {valid_field}")
-        
-        field=field.lower()
-
-        # ============================================================
-        # Bounds of planes configuration
-        # ============================================================
-        b_xy = volumes.bounds["XY"]
-        b_xy_top = volumes.bounds["XY_TOP"]
-        b_xz = volumes.bounds["XZ"]
-        b_yz = volumes.bounds["YZ"]
-        
-        xy_x, xy_y = get_phys_ranges(b_xy, "XY")
-        xy_top_x, xy_top_y = get_phys_ranges(b_xy_top, "XY")
-        xz_x, xz_y = get_phys_ranges(b_xz, "XZ")
-        yz_x, yz_y = get_phys_ranges(b_yz, "YZ")
-        
-        xy_x = [v * 1e3 for v in xy_x]
-        xy_y = [v * 1e3 for v in xy_y]
-        
-        xy_top_x = [v * 1e3 for v in xy_top_x]
-        xy_top_y = [v * 1e3 for v in xy_top_y]
-        
-        xz_x = [v * 1e3 for v in xz_x]
-        xz_y = [v * 1e3 for v in xz_y]
-        
-        yz_x = [v * 1e3 for v in yz_x]
-        yz_y = [v * 1e3 for v in yz_y]
-        # ============================================================
-        # Plane configuration
-        # ============================================================
-        planes = {
-            "XY": {
-                "filename": f"enhancement_xyplanar_{field}2.h5",
-                "save_anim": f"enh_xy_{field}2.mp4",
-                "x_phys_range": xy_x,
-                "y_phys_range": xy_y,
-                "x_zoom": draw_params["XY"]["x_zoom"],
-                "y_zoom": draw_params["XY"]["y_zoom"],
-                "xlabel": "X [nm]",
-                "ylabel": "Y [nm]",
-                "roi": {
-                    "type": "rectangle",
-                    "center": draw_params["XY"]["roi"]["center"],
-                    "width": draw_params["XY"]["roi"]["width"],
-                    "height": draw_params["XY"]["roi"]["height"],
-                },
-            },
-
-            "XYTop": {
-                "filename": f"enhancement_xyplanarTOP_{field}2.h5",
-                "save_anim": f"enh_xy_TOP_{field}2.mp4",
-                "x_phys_range": xy_top_x,
-                "y_phys_range": xy_top_y,
-                "x_zoom": draw_params["XY"]["x_zoom"],
-                "y_zoom": draw_params["XY"]["y_zoom"],
-                "xlabel": "X [nm]",
-                "ylabel": "Y [nm]",
-                "roi": {
-                    "type": "rectangle",
-                    "center": draw_params["XY"]["roi"]["center"],
-                    "width": draw_params["XY"]["roi"]["width"],
-                    "height": draw_params["XY"]["roi"]["height"],
-                },
-            },
-
-            "XZ": {
-                "filename": f"enhancement_xzplanar_{field}2.h5",
-                "save_anim": f"enh_xz_{field}2.mp4",
-                "x_phys_range": xz_x,
-                "y_phys_range": xz_y,
-                "x_zoom": draw_params["XZ"]["x_zoom"],
-                "y_zoom": draw_params["XZ"]["y_zoom"],
-                "xlabel": "X [nm]",
-                "ylabel": "Z [nm]",
-                "roi": {
-                    "type": "rectangle",
-                    "center": draw_params["XZ"]["roi"]["center"],
-                    "width": draw_params["XZ"]["roi"]["width"],
-                    "height": draw_params["XZ"]["roi"]["height"],
-                },
-            },
-
-            "YZ": {
-                "filename": f"enhancement_yzplanar_{field}2.h5",
-                "save_anim": f"enh_yz_{field}2.mp4",
-                "x_phys_range": yz_x,
-                "y_phys_range": yz_y,
-                "x_zoom": draw_params["YZ"]["x_zoom"],
-                "y_zoom": draw_params["YZ"]["y_zoom"],
-                "xlabel": "Y [nm]",
-                "ylabel": "Z [nm]",
-                "roi": {
-                    "type": "rectangle",
-                    "center": draw_params["YZ"]["roi"]["center"],
-                    "width": draw_params["YZ"]["roi"]["width"],
-                    "height": draw_params["YZ"]["roi"]["height"],
-                },
-            },
-        }
-
-        # ============================================================
-        # Containers for line plots
-        # ============================================================
-
-        line_xdata = []
-        line_ydata = []
-        line_labels = []
-
-        # ============================================================
-        # Main loop over planes
-        # ============================================================
-
-        for plane, cfg in planes.items():
-            print(f"Processing {plane} plane")
-
-            if animate:
-                # ---------- Animation ----------
-                animate_field_from_h5_physical(
-                    h5_filename=cfg["filename"],
-                    load_h5data_path=config.path_to_save,
-                    save_name=cfg["save_anim"],
-                    save_path=config.animations_folder_path,
-                    interval=50,
-                    cmap="inferno",
-                    transpose_xy=True,
-                    IMG_CLOSE=config.IMG_CLOSE,
-                    x_phys_range=cfg["x_phys_range"],
-                    y_phys_range=cfg["y_phys_range"],
-                    x_zoom=cfg["x_zoom"],
-                    y_zoom=cfg["y_zoom"],
-                    mask_left=0,
-                    mask_right=0,
-                    mask_bottom=0,
-                    mask_top=0,
-                    title=f"Field enhancement |E|²/|E0|² ({plane})",
-                    xlabel=cfg["xlabel"],
-                    ylabel=cfg["ylabel"],
-                )
-
-            # ---------- ROI analysis ----------
-            frame_mean, frame_max = analyze_roi_from_h5_physical(
-                h5_filename=cfg["filename"],
-                load_h5data_path=config.path_to_save,
-                roi=cfg["roi"],
-                x_phys_range=cfg["x_phys_range"],
-                y_phys_range=cfg["y_phys_range"],
-            )
-
-            print(f"Max mean enhancement in ROI for {plane}: {frame_max[1]:.2f} at frame {frame_max[0]}")
-
-            # ---------- Max-frame plot ----------
-            plot_field_frame_from_h5_physical(
-                frame_index=int(frame_max[0]),
-                h5_filename=cfg["filename"],
-                load_h5data_path=config.path_to_save,
-                cmap="inferno",
-                transpose_xy=True,
-                IMG_CLOSE=config.IMG_CLOSE,
-                x_phys_range=cfg["x_phys_range"],
-                y_phys_range=cfg["y_phys_range"],
-                x_zoom=cfg["x_zoom"],
-                y_zoom=cfg["y_zoom"],
-                mask_left=0,
-                mask_right=0,
-                mask_bottom=0,
-                mask_top=0,
-                roi=cfg["roi"],
-                title=f"Field enhancement |E|²/|E0|² ({plane})",
-                xlabel=cfg["xlabel"],
-                ylabel=cfg["ylabel"],
-                save_path=config.animations_folder_path,
-                save_name=f"MAP_{plane}.png",
-            )
-
-            # ---------- Collect data for joint line plot ----------
-            line_xdata.append(frame_mean[:, 0])
-            line_ydata.append(frame_mean[:, 1])
-            line_labels.append(f"{plane}")
-
-        # ============================================================
-        # Joint line plot
-        # ============================================================
-        colors = cm2c(cm_inferno, 14)
-        multi_line_plotter_same_axes(
-            xdata_list=line_xdata,
-            ydata_list=line_ydata,
-            labels=line_labels,
-            colors=[colors[0], colors[5], colors[7], colors[9]],
-            linestyles=["-", "--", "-.", ":"],
-            grid=True,
-            xlabel="Time step",
-            ylabel="|E|²/|E0|²",
-            title="Mean |E|²/|E0|² in gap vs time",
-            legend=True,
-            save_path=config.animations_folder_path,
-            save_name="MEAN_ENHANCEMENT_ALL_PLANES.png",
-            IMG_CLOSE=config.IMG_CLOSE,
-        )
-    return 0
-
-# def compute_gap_spectrum(
-#     gap_data,
-#     z_points,
-#     freqs,
-#     save_path=None,
-# ):
-#     if not mp.am_master():
-#         return
-
-#     freqs = np.array(freqs)
-#     wavelength = 1.0 / freqs
-#     z_points = np.array(z_points)
-
-#     gap_dir = os.path.join(save_path, "gap_spec")
-#     os.makedirs(gap_dir, exist_ok=True)
-
-#     # =========================================
-#     # SAVE FILES PER POINT
-#     # =========================================
-#     for zi, z in enumerate(z_points):
-
-#         z_str = f"{z:.6f}".replace(".", "p")
-
-#         for comp in ["Ex", "Ey", "Ez", "E2"]:
-
-#             empty = gap_data[comp]["empty"][zi]
-#             antenna = gap_data[comp]["antenna"][zi]
-#             enh = gap_data[comp]["enh"][zi]
-
-#             data = np.column_stack((
-#                 wavelength,
-#                 empty,
-#                 antenna,
-#                 enh
-#             ))
-
-#             header = "wavelength  empty(|E|^2)  antenna(|E|^2)  enhancement"
-
-#             fname = os.path.join(
-#                 gap_dir,
-#                 f"{comp}_z_{z_str}.txt"
-#             )
-
-#             np.savetxt(fname, data, header=header)
-
-#     # =========================================
-#     # PLOTS
-#     # =========================================
-#     for comp in ["E2", "Ex", "Ey", "Ez"]:
-#         plot_gap_component(
-#             component_name=comp,
-#             gap_data=gap_data,
-#             z_points=z_points,
-#             wavelength=wavelength,
-#             save_path=gap_dir,
-#         )
-
-# def plot_gap_component(
-#     component_name,
-#     gap_data,
-#     z_points,
-#     wavelength,
-#     save_path,
-# ):
-
-#     comp_empty = gap_data[component_name]["empty"]
-#     comp_ant = gap_data[component_name]["antenna"]
-#     comp_enh = gap_data[component_name]["enh"]
-
-#     # =========================================
-#     # GENERATE COLORS FROM COLORMAP
-#     # =========================================
-#     cmap = plt.get_cmap("inferno")
-#     n = len(z_points)
-#     if n == 1:
-#         colors = [cmap(0.5)]
-#     else:
-#         colors = [cmap(i / (n - 1)) for i in range(n)]
-
-#     def make_plot(data, label_suffix, filename):
-
-#         xdata_list = [wavelength for _ in range(n)]
-#         ydata_list = [data[i] for i in range(n)]
-#         labels = [f"z={z:.3f}" for z in z_points]
-
-#         multi_line_plotter_same_axes(
-#             xdata_list=xdata_list,
-#             ydata_list=ydata_list,
-#             labels=labels,
-#             colors=colors,
-#             xlabel="Wavelength [μm]",
-#             ylabel=f"{component_name} {label_suffix}",
-#             title=f"{component_name} {label_suffix} spectrum along gap",
-#             legend=False,
-#             save_path=save_path,
-#             save_name=filename,
-#         )
-
-#     # --- EMPTY ---
-#     make_plot(
-#         comp_empty,
-#         "|E|² (empty)",
-#         f"{component_name}_empty_all_z.png"
-#     )
-
-#     # --- ANTENNA ---
-#     make_plot(
-#         comp_ant,
-#         "|E|² (antenna)",
-#         f"{component_name}_antenna_all_z.png"
-#     )
-
-#     # --- ENHANCEMENT ---
-#     make_plot(
-#         comp_enh,
-#         "enhancement",
-#         f"{component_name}_enh_all_z.png"
-#     )
-
 def compute_harminv(
     harminv_objects,
     save_path=None,
@@ -1866,6 +1176,8 @@ def compute_fields_2(
 
     harminv=False,
     harminv_objects=None,
+
+    calc_enh=True,
 ):
     """
     Run simulations (or load cache) and perform requested analyses.
@@ -1878,11 +1190,6 @@ def compute_fields_2(
         "xyplanarTOP": volumes.volume["XY_TOP"],
         "xzplanar": volumes.volume["XZ"],
         "yzplanar": volumes.volume["YZ"],
-    }
-
-    empty_planes = {
-        f"{k}-empty": v
-        for k, v in planes.items()
     }
 
     # =====================================================
@@ -1991,7 +1298,7 @@ def compute_fields_2(
         sim=sim_empty,
         cache_dir=empty_from_cache,
         structure_name="empty",
-        planes=empty_planes,
+        planes=planes,
         config=config,
 
         calc_E=calc_E,
@@ -2174,6 +1481,34 @@ def compute_fields_2(
             "HARMINV_end",
         )
 
+    # =====================================================
+    # ENHANCEMENT
+    # =====================================================
+    if calc_enh:
+        log_system_usage(
+            config.path_to_save,
+            "ENHANCEMENT_start",
+        )
+        
+        enhancement_dir = os.path.join(
+            config.path_to_save,
+            "cache",
+            "enhancement",
+        )
+        compute_enhancement_maps(
+            empty_path=empty_cache,
+            substrate_path=substrate_cache,
+            antenna_path=antenna_cache,
+            save_path=enhancement_dir,
+        )
+
+        
+        log_system_usage(
+            config.path_to_save,
+            "ENHANCEMENT_stop",
+        )
+
+    # =====================================================
     return {
         "empty": empty_cache,
         "substrate": substrate_cache,

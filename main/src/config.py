@@ -42,13 +42,11 @@ class SimulationConfig:
         # PATHS
         # =====================================================
         self.path_to_save           =   "results/"
-        self.animations_folder_path =   os.path.join(self.path_to_save, "animations")
         self.empty_reference_path = os.path.join(self.path_to_save, "EMPTY_REFERENCE")
 
         # =====================================================
         # CELL
         # =====================================================
-
         self.pml = 100/xm
         self.pad = 100/xm
 
@@ -61,7 +59,6 @@ class SimulationConfig:
         # =====================================================
         # SOURCE
         # =====================================================
-
         self.src_type = "gaussian"  # "continuous" or "gaussian"
         self.src_is_integrated = True # if source overlaps with PML regions use True
         self.lambda0 = 8100 / xm
@@ -94,7 +91,7 @@ class SimulationConfig:
         # PLOTS AND ANIMATIONS
         # =====================================================
         self.IMG_CLOSE = True
-        self.animations_fps = 15
+        self.animations_fps = 8
 
 
     # --------------------------------------------------------

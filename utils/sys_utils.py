@@ -73,10 +73,10 @@ def create_directory(SIM_NAME):
     # Broadcast to all MPI ranks
     path_to_save = comm.bcast(path_to_save, root=0)
 
-    animations_folder_path = os.path.join(
-        path_to_save,
-        "animations"
-    )
+    # animations_folder_path = os.path.join(
+    #     path_to_save,
+    #     "animations"
+    # )
 
     # ==========================================
     # Create folders only once
@@ -84,7 +84,7 @@ def create_directory(SIM_NAME):
     if mp.am_master():
 
         os.makedirs(path_to_save)
-        os.makedirs(animations_folder_path)
+        # os.makedirs(animations_folder_path)
 
         print("=" * 60)
         print(f"HPC mode: {HPC}")
@@ -95,7 +95,7 @@ def create_directory(SIM_NAME):
     # Wait until directories exist
     comm.Barrier()
 
-    return path_to_save, animations_folder_path
+    return path_to_save #, animations_folder_path
 
 def make_unique_path(path):
     """

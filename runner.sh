@@ -3,14 +3,14 @@
 # ============================================
 # CONFIGURATION
 # ============================================
-NPROC=24
+NPROC=1
 
 EXPERIMENT="bowtie_substrate"
-SUBSTRATE="Al"
+SUBSTRATE="Au"
 COMMENT="Test of trl for smaller dets."
-# EMPTY_CACHE="results/bowtie__lam-660__gap-6__L-87__T-30__R-5__ant-Au__sub-Au__5/cache/empty/"
-# SUBSTRATE_CACHE="results/bowtie__lam-660__gap-6__L-87__T-30__R-5__ant-Au__sub-Al/cache/substrate/"
-# ANTENNA_CACHE="results/bowtie__lam-660__gap-6__L-87__T-30__R-5__ant-Au__sub-Al/cache/antenna/"
+EMPTY_CACHE="results/bowtie__lam-660__gap-6__L-87__T-30__R-5__ant-Au__sub-Au__19/cache/empty/"
+SUBSTRATE_CACHE="results/bowtie__lam-660__gap-6__L-87__T-30__R-5__ant-Au__sub-Au__19/cache/substrate/"
+ANTENNA_CACHE="results/bowtie__lam-660__gap-6__L-87__T-30__R-5__ant-Au__sub-Au__19/cache/antenna/"
 
 LOG_OUTPUT="output"
 LOG_ERROR="error"
@@ -35,11 +35,11 @@ mpirun -np "$NPROC" \
     --experiment="$EXPERIMENT" \
     --substrate="$SUBSTRATE" \
     --comment="$COMMENT" \
+    --substrate_cache="$SUBSTRATE_CACHE" \
+    --antenna_cache="$ANTENNA_CACHE" \
+    --empty_cache="$EMPTY_CACHE" \
     1> "$OUTFILE" \
     2> "$ERRFILE"
-    # --substrate_cache="$SUBSTRATE_CACHE" \
-    # --antenna_cache="$ANTENNA_CACHE" \
-    # --empty_cache="$EMPTY_CACHE" \
 
 EXIT_CODE=$?
 

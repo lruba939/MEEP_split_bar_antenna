@@ -149,7 +149,7 @@ def bowtie_substrate_experiment(
         R=Top.radius * xm
     )
 
-    config.path_to_save, config.animations_folder_path = create_directory(SIM_NAME)
+    config.path_to_save = create_directory(SIM_NAME)
 
     ########################
     log_system_usage(
@@ -229,8 +229,60 @@ def bowtie_substrate_experiment(
         dft_object=Top,
 
         # harminv=True,
+
+        calc_enh=True,
     )
     ########################
+    draw_params = {
+        "XY": {"x_zoom": 1,
+               "y_zoom": 1,
+               "roi": {
+                    "center": (0, 0),
+                    "width": Top.gap * 1e3,
+                    "height":Top.gap * 1e3,
+                },
+        },
+        "XZ": {"x_zoom": 1,
+               "y_zoom": 1,
+               "roi": {
+                    "center": (0, 0),
+                    "width": Top.gap * 1e3,
+                    "height": Top.thickness * 1e3,
+                },
+        },
+        "YZ": {"x_zoom": 1,
+               "y_zoom": 1,
+               "roi": {
+                    "center": (0, 0),
+                    "width": Top.gap * 1e3,
+                    "height": Top.thickness * 1e3,
+                },
+        },
+    }
+    enhancement_root = os.path.join(
+        config.path_to_save,
+        "cache",
+        "enhancement",
+    )
+    for enhancement_name in (
+        "substrate_over_empty",
+        "antenna_over_empty",
+        "antenna_over_substrate",
+    ):
+        animate_enhancement_fields(
+            enhancement_path=os.path.join(
+                enhancement_root,
+                enhancement_name,
+            ),
+        enhancement_name=enhancement_name,
+        config=config,
+        volumes=antenna_vols,
+        draw_params=draw_params,
+        field="E",
+        animate=True,
+    )
+
+    ########################    
     log_system_usage(
         config.path_to_save,
         "END",

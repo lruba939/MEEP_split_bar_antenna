@@ -128,7 +128,7 @@ def save_experiment(
             filename = os.path.join(config.path_to_save, "experiment.txt")
 
         os.makedirs(config.path_to_save, exist_ok=True)
-        os.makedirs(config.animations_folder_path, exist_ok=True)
+        # os.makedirs(config.animations_folder_path, exist_ok=True)
 
         def cache_status(path):
             return "COMPUTED" if path is None else f"LOADED FROM\n{path}"
