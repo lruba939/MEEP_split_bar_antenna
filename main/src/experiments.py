@@ -24,8 +24,8 @@ def bowtie_substrate_experiment(
     # =====================================================
     config = SimulationConfig()
 
-    config.resolution = 500
-    config.sim_time = 25000 / xm
+    config.resolution = 350
+    config.sim_time = 20000 / xm
     config.sim_time_step = 100 / xm
 
     config.lambda0 = 660 / xm
@@ -43,11 +43,11 @@ def bowtie_substrate_experiment(
         z_offset=0.0
     )
     substrate = Bar(
-        length=1000/xm,
-        width=1000/xm,
-        thickness=520/xm,
+        length=1200/xm,
+        width=1200/xm,
+        thickness=675/xm,
         material_name=material_name,
-        z_offset=-(30/2.0+520/2.0)/xm,
+        z_offset=-(30/2.0+675/2.0)/xm,
         radius=0/xm,
     )
 
@@ -56,7 +56,7 @@ def bowtie_substrate_experiment(
 
     config.pad = 0
     # config.pad = 80/xm
-    config.pml = 350/xm
+    config.pml = 450/xm
     config.cell_size = [
         substrate.length,   # x
         substrate.width,   # y
@@ -64,11 +64,26 @@ def bowtie_substrate_experiment(
     ]
     cell = make_cell(config=config)
 
+    # config.src_size = [
+    #     Top.length*3,  # x
+    #     Top.length*3,  # y
+    #     0.0 / xm    # z
+    # ]
     config.src_size = [
-        Top.length*3,  # x
-        Top.length*3,  # y
+        1150 / xm,  # x
+        1150 / xm,  # y
         0.0 / xm    # z
     ]
+    # config.src_size = [
+    #     config.cell_size[0],  # x
+    #     config.cell_size[1],  # y
+    #     0.0 / xm    # z
+    # ]
+    # config.src_size = [
+    #     700/xm,  # x
+    #     700/xm,  # y
+    #     0.0 / xm    # z
+    # ]
 
     #!!!
     config.src_is_integrated = True
@@ -76,12 +91,19 @@ def bowtie_substrate_experiment(
     config.src_center = [
         0.0,    # x
         0.0,    # y
-        config.cell_size[2]/2.0-1.05*config.pml  # z
+        config.cell_size[2]/2.0-1.1*config.pml  # z
     ]
 
     config.nfreq = 500
-    config.z_reflection = config.cell_size[2]/2.0-1.20*config.pml
-    config.z_transmission = -config.cell_size[2]/2.0+config.pml+15/xm
+    # config.z_reflection = config.cell_size[2]/2.0-1.20*config.pml
+    # config.z_transmission = -config.cell_size[2]/2.0+config.pml+15/xm
+
+    config.z_reflection = 120 / xm
+    config.z_transmission = -120 / xm
+    # config.x_flux_monitor = 400 / xm
+    # config.y_flux_monitor = 400 / xm
+    config.x_flux_monitor = 260 / xm
+    config.y_flux_monitor = 260 / xm
 
     antenna_vols = VolumeSetROI(cell, antenna=Top)
 
@@ -195,16 +217,17 @@ def bowtie_substrate_experiment(
         config=config,
 
         TRL=True,
-        TRL_X_size=config.cell_size[0],
-        TRL_Y_size=config.cell_size[1],
+        # TRL_X_size=config.cell_size[0],
+        # TRL_Y_size=config.cell_size[1],
+        TRL_X_size=config.x_flux_monitor,
+        TRL_Y_size=config.y_flux_monitor,
 
-        # fluxes_X_size=substrate.length/2.0,
-        # fluxes_Y_size=substrate.width/2.0,
+        scattering=True,
+        scattering_object=Top,
 
-        # scattering=True,
-        # scattering_object=Top
+        dft_gap_spectrum=True,
+        dft_object=Top,
 
-        # dft_gap_spectrum=True,
         # harminv=True,
     )
     ########################

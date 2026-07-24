@@ -1147,8 +1147,12 @@ def save_2D_plot(sim, volume, save_name="2Dplot.png", IMG_SAVE=True, path_to_sav
                 boundary_parameters={'hatch':'o', 'linewidth':1.5, 'facecolor':'y', 'edgecolor':'b', 'alpha':0.3})
         if config is not None:
             if save_name is not None and any(axis in save_name for axis in ("XZ", "YZ")):
-                plt.hlines(config.z_reflection, -config.cell_size[0]/2.0, config.cell_size[0]/2.0, color='blue', linestyle='--', linewidth=1.0)
-                plt.hlines(config.z_transmission, -config.cell_size[0]/2.0, config.cell_size[0]/2.0, color='red', linestyle='--', linewidth=1.0)
+                if any(axis in save_name for axis in ("XZ")):
+                    size_flux_monitor = config.x_flux_monitor
+                else:
+                    size_flux_monitor = config.y_flux_monitor
+                plt.hlines(config.z_reflection, -size_flux_monitor/2.0, size_flux_monitor/2.0, color='blue', linestyle='--', linewidth=1.0)
+                plt.hlines(config.z_transmission, -size_flux_monitor/2.0, size_flux_monitor/2.0, color='red', linestyle='--', linewidth=1.0)
                 plt.text(-config.cell_size[0]/2.1, config.z_reflection*1.1, 'R', color='blue', fontsize=12)
                 plt.text(-config.cell_size[0]/2.1, config.z_transmission*0.9, 'T', color='red', fontsize=12)
 

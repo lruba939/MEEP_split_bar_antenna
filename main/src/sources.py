@@ -24,7 +24,7 @@ def make_source(config):
 
     elif config.src_type == "gaussian":
         return [mp.Source(
-                mp.GaussianSource(config.frequency, fwidth=config.frequency_width, is_integrated=config.src_is_integrated),
+                mp.GaussianSource(config.frequency, fwidth=config.frequency_width, is_integrated=True),
                 component=config.component,
                 center=mp.Vector3(config.src_center[0], config.src_center[1], config.src_center[2]),
                 size = mp.Vector3(config.src_size[0], config.src_size[1], config.src_size[2]),

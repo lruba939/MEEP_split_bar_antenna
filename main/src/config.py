@@ -87,6 +87,8 @@ class SimulationConfig:
         self.nfreq = 500
         self.z_reflection = 35.0 / xm
         self.z_transmission = -15.0 / xm
+        self.x_flux_monitor = self.cell_size[0]
+        self.y_flux_monitor = self.cell_size[1]
 
         # =====================================================
         # PLOTS AND ANIMATIONS
