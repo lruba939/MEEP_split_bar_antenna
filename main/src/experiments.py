@@ -25,7 +25,7 @@ def bowtie_substrate_experiment(
     config = SimulationConfig()
 
     config.resolution = 500
-    config.sim_time = 20000 / xm
+    config.sim_time = 28000 / xm
     config.sim_time_step = 100 / xm
 
     config.lambda0 = 660 / xm
