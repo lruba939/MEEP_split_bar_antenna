@@ -120,10 +120,10 @@ This makes individual modules independent and allows expensive FDTD simulations 
 ![Cell](Assets/cell.png)
 
 ### EM Field
-![GIF](https://github.com/lruba939/MEEP_plasmonic_antennas/blob/main/Assets/xyplanar_ex.gif)
+![GIF](https://github.com/lruba939/MEEP_plasmonic_antennas/blob/jun2026/Assets/xyplanar_ex.gif)
 
 ### Antenna Enhancement Effect
-![GIF](https://github.com/lruba939/MEEP_plasmonic_antennas/blob/main/Assets/enh_xy_e2.gif)
+![GIF](https://github.com/lruba939/MEEP_plasmonic_antennas/blob/jun2026/Assets/enh_xy_e2.gif)
 
 ![Antenna](Assets/antenna.png)
 
