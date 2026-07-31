@@ -32,7 +32,7 @@ def run():
 
         mpirun -np 24 python main/run.py --experiment=bowtie_substrate --substrate=SiO2 --comment="Testing new source position"
 
-        mpirun -np 48 python main/run.py --experiment=bowtie_mir --substrate=Au --empty_cache="results/bowtie__lam-660__gap-6__L-87__T-30__R-5__ant-Au__sub-Au__15/cache/empty/"
+        mpirun -np 48 python main/run.py --experiment=bowtie_mir --substrate=Au --antmat=W --empty_cache="results/bowtie__lam-660__gap-6__L-87__T-30__R-5__ant-Au__sub-Au__15/cache/empty/"
         """,
     formatter_class=argparse.RawDescriptionHelpFormatter
     )
@@ -47,6 +47,12 @@ def run():
         "--substrate",
         default="air",
         help="Substrate material"
+    )
+
+    parser.add_argument(
+        "--antmat",
+        default="Au",
+        help="Antenna material"
     )
 
     parser.add_argument(
@@ -109,6 +115,7 @@ def run():
 
     experiments[args.experiment](
         args.substrate,
+        antenna_material=args.antmat,
         COMMENT=args.comment,
         empty_from_cache=args.empty_cache,
         substrate_from_cache=args.substrate_cache,

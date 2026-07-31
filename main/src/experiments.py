@@ -16,6 +16,7 @@ mp.Simulation.eps_averaging = False
 
 def bowtie_substrate_experiment(
     material_name,
+    antenna_material="Au",
     COMMENT=None,
     empty_from_cache=None,
     substrate_from_cache=None,
@@ -42,7 +43,7 @@ def bowtie_substrate_experiment(
         length=86.6/xm, # <- to have about 100 nm in width
         thickness=30/xm,
         radius=5/xm,
-        material_name="Au",
+        material_name=antenna_material,
         z_offset=0.0
     )
     substrate = Bar(
@@ -57,7 +58,6 @@ def bowtie_substrate_experiment(
     geometry_substrate = substrate.build_geometry()
     geometry_antenna = Top.build_geometry() + substrate.build_geometry()
 
-    # config.pad = 0
     config.pad = 80/xm
     config.cell_size = [
         substrate.length + config.pad*2 + config.pml*2,   # x
@@ -66,11 +66,6 @@ def bowtie_substrate_experiment(
     ]
     cell = make_cell(config=config)
 
-    # config.src_size = [
-    #     Top.length*3,  # x
-    #     Top.length*3,  # y
-    #     0.0 / xm    # z
-    # ]
     config.src_size = [
         700 / xm,  # x
         700 / xm,  # y
@@ -87,13 +82,10 @@ def bowtie_substrate_experiment(
     ]
 
     config.nfreq = 500
-    # config.z_reflection = config.cell_size[2]/2.0-1.20*config.pml
-    # config.z_transmission = -config.cell_size[2]/2.0+config.pml+15/xm
 
     config.z_reflection = 70 / xm
     config.z_transmission = -60 / xm
-    # config.x_flux_monitor = 400 / xm
-    # config.y_flux_monitor = 400 / xm
+
     config.x_flux_monitor = 400 / xm
     config.y_flux_monitor = 400 / xm
 
@@ -178,35 +170,31 @@ def bowtie_substrate_experiment(
                 IMG_CLOSE=config.IMG_CLOSE
             )
     # =====================================================
-    compute_fields_2(
-        sim_empty=sim_empty,
-        empty_from_cache=empty_from_cache,
-        
-        sim_substrate=sim_substrate,
-        substrate_from_cache=substrate_from_cache,
-        
-        sim_antenna=sim_antenna,
-        antenna_from_cache=antenna_from_cache,
-        
-        volumes=antenna_vols,
-        config=config,
-
-        TRL=True,
-        # TRL_X_size=config.cell_size[0],
-        # TRL_Y_size=config.cell_size[1],
-        TRL_X_size=config.x_flux_monitor,
-        TRL_Y_size=config.y_flux_monitor,
-
-        scattering=True,
-        scattering_object=Top,
-
-        dft_gap_spectrum=True,
-        dft_object=Top,
-
-        # harminv=True,
-
-        calc_enh=True,
-    )
+#     compute_fields_2(
+#         sim_empty=sim_empty,
+#         empty_from_cache=empty_from_cache,
+#         
+#         sim_substrate=sim_substrate,
+#         substrate_from_cache=substrate_from_cache,
+#         
+#         sim_antenna=sim_antenna,
+#         antenna_from_cache=antenna_from_cache,
+#         
+#         volumes=antenna_vols,
+#         config=config,
+# 
+#         TRL=True,
+#         TRL_X_size=config.x_flux_monitor,
+#         TRL_Y_size=config.y_flux_monitor,
+# 
+#         scattering=True,
+#         scattering_object=Top,
+# 
+#         dft_gap_spectrum=True,
+#         dft_object=Top,
+# 
+#         calc_enh=True,
+#     )
     # ########################
     # draw_params = {
     #     "XY": {"x_zoom": 1,
